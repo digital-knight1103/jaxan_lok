@@ -21,7 +21,7 @@ function hexRgb(hex: string): [number, number, number] {
  * Nakładki rim light dla warstwy `src`. Piksele nakładki = kolor piksela źródła
  * zmieszany z PAL.rimLight / PAL.coolShade (pochodne kolorów palety), reszta przezroczysta.
  */
-export function buildRimOverlays(src: HTMLCanvasElement): RimOverlays {
+export function buildRimOverlays(src: HTMLCanvasElement, soft = true): RimOverlays {
   const w = src.width;
   const h = src.height;
   const data = src.getContext('2d')!.getImageData(0, 0, w, h).data;
@@ -44,10 +44,10 @@ export function buildRimOverlays(src: HTMLCanvasElement): RimOverlays {
         const i = (y * w + x) * 4;
         if (data[i + 3] < 128) continue;
         const sunEdge = !solid(x + sun, y); // od strony słońca pusto → krawędź oświetlona
-        const sunEdge2 = !sunEdge && !solid(x + 2 * sun, y);
+        const sunEdge2 = soft && !sunEdge && !solid(x + 2 * sun, y);
         const topEdge = !solid(x, y - 1);
         const shadeEdge = !solid(x - sun, y);
-        const shadeEdge2 = !shadeEdge && !solid(x - 2 * sun, y);
+        const shadeEdge2 = soft && !shadeEdge && !solid(x - 2 * sun, y);
         if (sunEdge) put(i, rim, 0.5);
         else if (topEdge) put(i, rim, 0.32);
         else if (sunEdge2 && bayer(x, y) < 0.5) put(i, rim, 0.22); // miękkie wejście światła

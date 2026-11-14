@@ -45,7 +45,10 @@ export class Consist {
     return Math.floor((this.dist / (Math.PI * d)) * 8) % WHEEL_FRAMES;
   }
 
-  /** Drgania pudła na nierównościach toru (±1 px, faza różna dla każdego pojazdu). */
+  /**
+   * Drgania pudła na nierównościach toru (±1 px, faza różna dla każdego pojazdu).
+   * Podskakuje tylko pudło – wózki i koła zostają na szynie (belki skrętu zakrywają szparę).
+   */
   private bounce(i: number): number {
     const amp = Math.min(1, this.kmh / 40);
     return Math.round(Math.sin(this.dist * 0.045 + i * 1.7) * Math.sin(this.dist * 0.013 + i) * amp * 1.4);
@@ -106,13 +109,18 @@ export class Consist {
 
   /** sunL/sunR: kierunek i siła światła (rim light na krawędziach pudeł – jak krajobraz). */
   draw(ctx: CanvasRenderingContext2D, sunL = 1, sunR = 0): void {
-    // cień składu na tłuczniu (pod ramami)
+    // cień składu na podkładach i tłuczniu (pod ramami); najciemniej tuż pod kołami
     const leftX = Math.max(0, this.wagonX(this.loads.length - 1));
     ctx.globalAlpha = 0.45;
     ctx.fillStyle = PAL.shadow;
     ctx.fillRect(leftX, TRACK_Y + 2, this.locoX + LOCO_W - leftX, 2);
     ctx.globalAlpha = 0.25;
     ctx.fillRect(leftX, TRACK_Y + 4, this.locoX + LOCO_W - leftX, 1);
+    ctx.globalAlpha = 0.5;
+    for (const wx of this.wheelXs()) {
+      ctx.fillRect(wx - 4, TRACK_Y + 2, 8, 2);
+      ctx.fillRect(wx - 2, TRACK_Y + 4, 4, 1);
+    }
     ctx.globalAlpha = 1;
     // wagony (od najdalszego), potem lokomotywa; pudła drgają, koła zostają na szynie
     for (let i = this.loads.length - 1; i >= 0; i--) {
@@ -120,10 +128,30 @@ export class Consist {
       if (x + WAGON_W < 0) continue;
       const s = getEamos(this.loads[i]);
       const y = TRACK_Y - WAGON_H;
-      ctx.drawImage(s.body, x, y + this.bounce(i));
+      const wy = y + this.bounce(i);
+      ctx.drawImage(s.body, x, wy);
+      drawRim(ctx, s.rim, x, sunL, sunR, wy);
       const wf = s.wheels[this.wheelFrame(s.wheels[0].width)];
       for (const wx of WAGON_WHEEL_X) ctx.drawImage(wf, x + wx - (wf.width >> 1), y + WAGON_WHEEL_Y);
       ctx.drawImage(s.bogies, x, y);
+    }
+    // sprzęgi śrubowe i przewody hamulcowe między pojazdami (pod zderzakami)
+    for (let i = 0; i < this.loads.length; i++) {
+      const jx = this.wagonX(i) + WAGON_W; // styk: prawy koniec wagonu i | lewy koniec następnego
+      if (jx < -4) break;
+      const cy = TRACK_Y - 14;
+      for (let k = -3; k <= 3; k++) {
+        ctx.fillStyle = (k & 1) ? PAL.locoDeep : PAL.steel; // ogniwa sprzęgu
+        ctx.fillRect(jx + k, cy, 1, 1);
+      }
+      ctx.fillStyle = PAL.railGlint;
+      ctx.fillRect(jx - 1, cy, 1, 1);
+      // przewód hamulcowy zwisający łukiem, z czerwonymi kurkami
+      ctx.fillStyle = PAL.locoBlack;
+      for (let k = -4; k <= 4; k++) ctx.fillRect(jx + k, cy + 2 + (Math.abs(k) < 3 ? 1 : 0), 1, 1);
+      ctx.fillStyle = PAL.tailRed;
+      ctx.fillRect(jx - 5, cy + 1, 1, 1);
+      ctx.fillRect(jx + 5, cy + 1, 1, 1);
     }
     const l = getDragon2();
     const X = this.locoX;

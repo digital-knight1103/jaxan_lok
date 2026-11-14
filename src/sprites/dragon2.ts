@@ -22,8 +22,8 @@ const BT = LOCO_BODY_TOP;
 const WHEEL_D = 11;
 /** Środki kół (x) – układ Co'Co': dwa wózki trzyosiowe. */
 export const LOCO_WHEEL_X = [20, 32, 44, 105, 117, 129];
-/** Górna krawędź kół w układzie sprite'a (koła stoją na szynie: dół = LOCO_H-1). */
-export const LOCO_WHEEL_Y = LOCO_H - WHEEL_D;
+/** Górna krawędź kół: dolny wiersz koła leży na wierszu główki szyny (TRACK_Y) – styk co do piksela. */
+export const LOCO_WHEEL_Y = LOCO_H - WHEEL_D + 1;
 /** Środki wózków (do ramy wózka). */
 const BOGIE_X = [32, 117];
 
@@ -233,6 +233,11 @@ function drawBody(ctx: CanvasRenderingContext2D): void {
 /** Rama wózka – rysowana NA kołach, żeby zakryć ich górę. W cieniu pudła. */
 function drawBogieFrames(ctx: CanvasRenderingContext2D): void {
   for (const cx of BOGIE_X) {
+    // belka skrętu z czopem: styka się z dolną krawędzią ramy pudła (bez prześwitu)
+    // (sięga 1 wiersz w ramę pudła – przy podskoku pudła ±1 px nie ma szpary)
+    rect(ctx, cx - 7, BT + 29, 15, 4, PAL.locoBlack);
+    rect(ctx, cx - 7, BT + 29, 15, 2, PAL.locoDeep);
+    rect(ctx, cx - 1, BT + 31, 3, 2, PAL.locoGraphite);
     // rama: górny wiersz w cieniu pudła, środek półcień, dół odbite światło od ziemi
     rect(ctx, cx - 19, BT + 33, 39, 1, PAL.locoDeep);
     rect(ctx, cx - 19, BT + 34, 39, 1, PAL.locoBlack);

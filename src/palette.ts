@@ -325,6 +325,9 @@ export const PAL = {
   greenDeep: '#245A18',
   skyReflect: '#C6DDF0',
   skyReflectHi: '#EEF6FC',
+  // --- węglarka: rdza i brud przy dole pudła ---
+  rustDeep: '#4C2E20',
+  grime: '#38322A',
 } as const;
 
 export type PalKey = keyof typeof PAL;
