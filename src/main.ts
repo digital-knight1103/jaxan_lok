@@ -77,11 +77,18 @@ function applyTint(c: CanvasRenderingContext2D, night: number, warmth: number, s
 }
 
 // --- warstwy sceny ---
+// trzy pasma gór: im dalej, tym bledsze i bardziej zamglone
+const farthest = new MountainLayer(3, 0.025, {
+  light: PAL.mountFarthestHi, shade: PAL.mountFarthest, haze: PAL.mountHaze, hazeAmount: 0.7,
+  baseY: 205, height: 88, roughness: 0.7,
+});
 const far = new MountainLayer(7, 0.05, {
-  base: PAL.mountFar, light: PAL.mountFarHi, baseY: 200, height: 110, roughness: 0.8,
+  light: PAL.mountFarHi, shade: PAL.mountFarShade, haze: PAL.mountHaze, hazeAmount: 0.75,
+  baseY: 215, height: 105, roughness: 0.8,
 });
 const near = new MountainLayer(13, 0.1, {
-  base: PAL.mountNear, light: PAL.mountNearHi, shade: PAL.mountNearShade, baseY: 230, height: 90, roughness: 0.6,
+  light: PAL.mountNearHi, shade: PAL.mountNear, haze: PAL.mountHaze, hazeAmount: 0.55,
+  baseY: 240, height: 90, roughness: 0.6,
 });
 const clouds = new CloudLayer(21);
 const hills = new HillLayer(31);
@@ -265,6 +272,7 @@ startLoop(
 
     // 2. krajobraz za pociągiem (przyciemniany nocą) + światła okien i lamp
     bctx.clearRect(0, 0, W, H);
+    farthest.draw(bctx, worldX);
     far.draw(bctx, worldX);
     clouds.draw(bctx, worldX);
     near.draw(bctx, worldX);

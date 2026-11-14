@@ -49,3 +49,65 @@ export function drawBlob(
     }
   }
 }
+
+/**
+ * Listowie z kępek (korony drzew, krzaki, kępy trawy): ciemna baza w kształcie
+ * elipsy, na niej kępki rysowane od tyłu do przodu – każda oświetlona z lewej-góry,
+ * z jasnym refleksem. Dolne-prawe kępki ciemniejsze. Bez losowego szumu.
+ * ramp: od najjaśniejszego (refleks) do najciemniejszego (głęboki cień).
+ */
+export function drawFoliage(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number, rx: number, ry: number,
+  ramp: readonly string[],
+  rnd: () => number,
+  clump: [number, number] = [2, 4],
+  /** bazowa jasność kępek (indeks w ramp); większa = ciemniej */
+  tone = 1.6,
+): void {
+  const last = ramp.length - 1;
+  // baza: postrzępiona elipsa w ciemnym odcieniu
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
+    for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+      const nx = (x + 0.5 - cx) / rx;
+      const ny = (y + 0.5 - cy) / ry;
+      if (nx * nx + ny * ny > 0.82) continue;
+      ctx.fillStyle = ramp[last - 1];
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+  // kępki
+  const area = Math.PI * rx * ry;
+  const avg = (clump[0] + clump[1]) / 2;
+  const n = Math.max(4, Math.round((area / (Math.PI * avg * avg)) * 1.6));
+  const pts: Circle[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = rnd() * Math.PI * 2;
+    const d = Math.sqrt(rnd()) * 0.92;
+    pts.push({ x: cx + Math.cos(a) * d * rx, y: cy + Math.sin(a) * d * ry, r: clump[0] + rnd() * (clump[1] - clump[0]) });
+  }
+  pts.sort((p, q) => p.y - q.y);
+  for (const p of pts) {
+    // położenie w koronie → bazowa jasność kępki (lewa-góra jaśniej)
+    const pos = ((p.x - cx) / rx) * 0.45 + ((p.y - cy) / ry) * 0.75; // -1.2..1.2
+    const base = tone + pos * 1.4;
+    const R = Math.round(p.r);
+    for (let dy = -R; dy <= R; dy++) {
+      for (let dx = -R; dx <= R; dx++) {
+        const dist = Math.hypot(dx, dy);
+        if (dist > p.r) continue;
+        const lit = -(dx * 0.6 + dy * 0.8) / p.r; // -1..1
+        let idx = Math.round(base - lit * 1.3);
+        if (dist > p.r - 0.8 && dy > 0) idx += 1; // ciemny brzeg od dołu – kępki się „odcinają"
+        idx = Math.max(1, Math.min(last, idx));
+        ctx.fillStyle = ramp[idx];
+        ctx.fillRect(Math.round(p.x) + dx, Math.round(p.y) + dy, 1, 1);
+      }
+    }
+    // refleks na kępce z lewej-góry (tylko na oświetlonych)
+    if (base < 2.2) {
+      ctx.fillStyle = ramp[0];
+      ctx.fillRect(Math.round(p.x) - Math.round(R * 0.4), Math.round(p.y) - Math.round(R * 0.5), 1, 1);
+    }
+  }
+}

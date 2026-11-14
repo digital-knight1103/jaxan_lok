@@ -44,11 +44,26 @@ function drawWagon(ctx: CanvasRenderingContext2D, load: number): void {
     rect(ctx, x + 1, BT + 2, 1, 24, PAL.wagonShade);
   }
 
+  // --- nity wzdłuż górnej i dolnej krawędzi + przerywany połysk ---
+  for (let x = X0 + 2; x < X1 - 1; x += 3) {
+    rect(ctx, x, BT + 3, 1, 1, PAL.rivet);
+    rect(ctx, x, BT + 24, 1, 1, PAL.rivet);
+  }
+  for (let x = X0 + 4; x < X1 - 4; x++) if (x % 15 < 12) rect(ctx, x, BT + 5, 1, 1, PAL.bodyGloss);
+
   // --- „X": zielone ramię „>" i magentowe „<" (wiersze 2..25, środek 13) ---
   for (let y = 2; y <= 25; y++) {
     const s = Math.round(Math.abs(y - 13) * 0.55);
     rect(ctx, 73 - s, BT + y, 3, 1, PAL.wagonGreen); // „>" – szczyt w prawo
     rect(ctx, 77 + s, BT + y, 3, 1, PAL.wagonMagenta); // „<" – szczyt w lewo
+    // połysk na lewym brzegu ramion, cień na prawym
+    if (y < 13) {
+      rect(ctx, 73 - s, BT + y, 1, 1, PAL.jaxanGreen);
+      rect(ctx, 79 + s, BT + y, 1, 1, PAL.wagonMagentaShade);
+    } else {
+      rect(ctx, 75 - s, BT + y, 1, 1, PAL.wagonGreenShade);
+      rect(ctx, 77 + s, BT + y, 1, 1, PAL.locoMagentaHi);
+    }
   }
 
   // --- pas górny: zielony → czarny (nad X) → magenta ---

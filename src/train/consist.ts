@@ -104,6 +104,14 @@ export class Consist {
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
+    // cień składu na tłuczniu (pod ramami)
+    const leftX = Math.max(0, this.wagonX(this.loads.length - 1));
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = PAL.shadow;
+    ctx.fillRect(leftX, TRACK_Y + 2, this.locoX + LOCO_W - leftX, 2);
+    ctx.globalAlpha = 0.25;
+    ctx.fillRect(leftX, TRACK_Y + 4, this.locoX + LOCO_W - leftX, 1);
+    ctx.globalAlpha = 1;
     // wagony (od najdalszego), potem lokomotywa; pudła drgają, koła zostają na szynie
     for (let i = this.loads.length - 1; i >= 0; i--) {
       const x = this.wagonX(i);

@@ -1,11 +1,11 @@
 import { PAL } from '../palette';
 import { cached, makeSprite } from '../engine/sprite';
 
-export const WHEEL_FRAMES = 4;
+export const WHEEL_FRAMES = 8;
 
 /**
- * Klatki obrotu koła o średnicy d: ciemna tarcza, jasna obręcz i szprycha
- * obracana co 45° (4 klatki wystarczą – szprycha jest symetryczna).
+ * Klatki obrotu koła o średnicy d: ciemna tarcza, jasna obręcz, szprycha i znacznik
+ * obracane co 45° (8 klatek na obrót).
  */
 export function getWheelFrames(d: number): HTMLCanvasElement[] {
   return cached(`wheel-${d}`, () => {
@@ -22,7 +22,7 @@ export function getWheelFrames(d: number): HTMLCanvasElement[] {
               const dist = Math.hypot(dx, dy);
               if (dist > r) continue;
               let c: string = PAL.wheelDark;
-              if (dist > r - 1.1) c = PAL.wheelRim;
+              if (dist > r - 1.1) c = dx + dy < -r * 0.9 ? PAL.railGlint : PAL.wheelRim; // stały błysk z lewej-góry
               else {
                 // odległość od szprychy (prostej przez środek pod kątem a)
                 const off = Math.abs(dx * Math.sin(a) - dy * Math.cos(a));
@@ -32,8 +32,11 @@ export function getWheelFrames(d: number): HTMLCanvasElement[] {
               ctx.fillRect(x, y, 1, 1);
             }
           }
-          ctx.fillStyle = PAL.steel; // piasta
-          ctx.fillRect(Math.floor(r - 0.5), Math.floor(r - 0.5), 1, 1);
+          // piasta + znacznik na końcu szprychy (asymetryczny → widać obrót)
+          ctx.fillStyle = PAL.steel;
+          ctx.fillRect(Math.floor(r - 1), Math.floor(r - 1), 2, 2);
+          ctx.fillStyle = PAL.railGlint;
+          ctx.fillRect(Math.round(r - 0.5 + Math.cos(a) * (r - 2)), Math.round(r - 0.5 + Math.sin(a) * (r - 2)), 1, 1);
         }),
       );
     }

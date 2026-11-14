@@ -24,9 +24,13 @@ export function drawGround(
   const wave = (x: number, b: number) =>
     Math.round((3 + b * 2) * Math.sin((Math.PI * k1 * x) / segW + b) * Math.sin((Math.PI * x) / segW) +
       2 * Math.sin((Math.PI * k2 * x) / segW) * Math.sin((Math.PI * x) / segW));
-  const RAMP: string[] = [PAL.grassHi, PAL.grass, PAL.grassMid, PAL.grassDark, PAL.grassDeep, PAL.frontDeep];
+  const RAMP: string[] = [PAL.grassGlint, PAL.grassHi, PAL.grass, PAL.grassMid, PAL.grassDark, PAL.grassDeep, PAL.frontDeep];
+  // 1. pasy kolorów; na granicach 2 wiersze ditheringu (miękkie przejście)
+  const spans: { from: number; to: number; ri: number }[][] = [];
   for (let x = x0; x < x1; x++) {
     const top = topAt(x);
+    const col: { from: number; to: number; ri: number }[] = [];
+    spans.push(col);
     if (top >= H) continue;
     for (let b = 0; b < bands.length; b++) {
       const from = Math.max(top, GROUND_Y + bands[b][0] + (b === 0 ? 0 : wave(x, b)));
@@ -34,22 +38,37 @@ export function drawGround(
       if (to <= from) continue;
       ctx.fillStyle = bands[b][1];
       ctx.fillRect(x, from, 1, to - from);
-      // tekstura: krótkie źdźbła jaśniejsze/ciemniejsze o ton
-      const ri = RAMP.indexOf(bands[b][1]);
-      for (let i = 0; i < (to - from) / 7; i++) {
-        const y = from + Math.floor(rnd() * (to - from));
-        ctx.fillStyle = RAMP[Math.max(0, Math.min(RAMP.length - 1, ri + (rnd() < 0.5 ? -1 : 1)))];
-        ctx.fillRect(x, y, 1, 2);
+      if (b > 0 && from > top) {
+        ctx.fillStyle = bands[b - 1][1];
+        for (let y = from; y < Math.min(to, from + 3); y++) if ((x + y) % 2 === 0 && y - from < 2 + (x % 2)) ctx.fillRect(x, y, 1, 1);
+      }
+      col.push({ from, to, ri: RAMP.indexOf(bands[b][1]) });
+    }
+  }
+  // 2. źdźbła: skośne kreski w górę-w prawo, jaśniejsze o ton, z refleksem na
+  //    czubku i cieniem u nasady – trawa „pod wiatr" jak na styl.jpg
+  for (let i = 0; i < spans.length; i++) {
+    const x = x0 + i;
+    for (const s of spans[i]) {
+      const n = Math.floor((s.to - s.from) / 6);
+      for (let k = 0; k < n; k++) {
+        const y = s.from + 2 + Math.floor(rnd() * Math.max(1, s.to - s.from - 2));
+        const hgt = 2 + Math.floor(rnd() * 3);
+        ctx.fillStyle = RAMP[Math.max(0, s.ri - 1)];
+        for (let j = 0; j < hgt; j++) ctx.fillRect(x + (j >> 1), y - j, 1, 1);
+        if (s.ri <= 3 && rnd() < 0.35) {
+          ctx.fillStyle = RAMP[Math.max(0, s.ri - 2)];
+          ctx.fillRect(x + ((hgt - 1) >> 1), y - hgt + 1, 1, 1);
+        }
+        ctx.fillStyle = RAMP[Math.min(RAMP.length - 1, s.ri + 1)];
+        ctx.fillRect(x - 1, y + 1, 1, 1);
       }
     }
-    // żółtozielone refleksy na krawędzi i drobne źdźbła
-    if (rnd() < 0.5) {
-      ctx.fillStyle = PAL.grassHi;
+    // żółtozielone refleksy na samej krawędzi stoku
+    const top = topAt(x);
+    if (top < H && rnd() < 0.55) {
+      ctx.fillStyle = rnd() < 0.3 ? PAL.grassGlint : PAL.grassHi;
       ctx.fillRect(x, top, 1, 1);
-    }
-    if (rnd() < 0.08) {
-      ctx.fillStyle = PAL.grassHi;
-      ctx.fillRect(x, top + 4 + Math.floor(rnd() * 30), 1, 2);
     }
   }
 }

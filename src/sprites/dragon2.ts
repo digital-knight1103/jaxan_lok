@@ -71,6 +71,20 @@ function drawBody(ctx: CanvasRenderingContext2D): void {
   // --- logo JAXAN (litery na siatce 5 px, skala 2 dla czytelności) ---
   drawText(ctx, 'JAXAN', 38, BT + 9, PAL.logoDark, 2);
 
+  // --- połysk lakieru: przerywane refleksy na magencie i czarnych kabinach ---
+  for (let x = 40; x < 100; x++) {
+    if (x % 14 < 11) rect(ctx, x, BT + 5, 1, 1, PAL.magentaGloss);
+    if (x % 14 === 3) rect(ctx, x + 1, BT + 6, 3, 1, PAL.locoMagentaHi);
+  }
+  for (let y = 3; y < 24; y++) {
+    if (y % 7 < 5) {
+      rect(ctx, 6, BT + y, 1, 1, PAL.bodyGloss); // tylna kabina
+      rect(ctx, 129, BT + y, 1, 1, PAL.bodyGloss); // czołowa kabina
+    }
+  }
+  rect(ctx, 8, BT + 2, 12, 1, PAL.bodyGloss);
+  rect(ctx, 128, BT + 2, 12, 1, PAL.bodyGloss);
+
   // --- kabiny: okna boczne, drzwi, poręcze, szyby czołowe ---
   const cab = (winX: number, doorX: number, rail1: number, rail2: number) => {
     rect(ctx, winX, BT + 5, 7, 6, PAL.glass);

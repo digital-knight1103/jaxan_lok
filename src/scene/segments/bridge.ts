@@ -34,12 +34,26 @@ export const bridge: SegmentDef = {
     drawBackStrip(back, 0, 30, rnd);
     drawBackStrip(back, WIDTH - 30, WIDTH, rnd);
 
-    // przyczółki – zielone stoki schodzące w dolinę
+    const span = (SPAN_TO - SPAN_FROM) / ARCHES;
+    // cień pomostu padający na dolinę: 3 płaskie stopnie (pixel art – bez gradientu)
+    // i dwustopniowa mgiełka przy dnie doliny
+    const x0 = ABUT - 10;
+    const w = WIDTH - 2 * ABUT + 20;
+    bed.fillStyle = PAL.bridgeShadow;
+    [[0, 14, 0.5], [14, 30, 0.32], [30, 48, 0.16]].forEach(([a, b, alpha]) => {
+      bed.globalAlpha = alpha;
+      bed.fillRect(x0, DECK_BOTTOM + a, w, b - a);
+    });
+    bed.fillStyle = PAL.valleyMist;
+    [[H - 44, H - 22, 0.12], [H - 22, H, 0.22]].forEach(([a, b, alpha]) => {
+      bed.globalAlpha = alpha;
+      bed.fillRect(x0, a, w, b - a);
+    });
+    bed.globalAlpha = 1;
+    // przyczółki – zielone stoki schodzące w dolinę (na cieniu: cień zostaje tylko w dolinie)
     drawGround(bed, 0, WIDTH, rnd, groundTop, WIDTH);
     scatterBushes(bed, 0, 30, 2, rnd);
     scatterBushes(bed, WIDTH - 40, WIDTH, 2, rnd);
-
-    const span = (SPAN_TO - SPAN_FROM) / ARCHES;
     for (let x = SPAN_FROM - 6; x < SPAN_TO + 6; x++) {
       // pomost
       bed.fillStyle = PAL.bridge;
@@ -49,7 +63,9 @@ export const bridge: SegmentDef = {
       const archY = x < SPAN_FROM || x >= SPAN_TO ? DECK_BOTTOM : DECK_BOTTOM + Math.round(ARCH_DEPTH * (2 * u - 1) ** 2);
       bed.fillRect(x, DECK_BOTTOM, 1, archY - DECK_BOTTOM);
       bed.fillStyle = PAL.bridgeShade;
-      bed.fillRect(x, archY, 1, 1); // cień pod łukiem
+      bed.fillRect(x, archY - 2, 1, 3); // ciemniejsze wnętrze łuku
+      bed.fillStyle = PAL.bridgeHi;
+      if (x % 2 === 0) bed.fillRect(x, archY - 3, 1, 1); // obrzeże łuku z refleksem
     }
     // światło na górnej krawędzi pomostu, nity
     bed.fillStyle = PAL.bridgeHi;
@@ -58,9 +74,16 @@ export const bridge: SegmentDef = {
     for (let x = SPAN_FROM - 4; x < SPAN_TO + 4; x += 4) bed.fillRect(x, DECK_TOP + 3, 1, 1);
     bed.fillStyle = PAL.bridgeShade;
     bed.fillRect(SPAN_FROM - 6, DECK_BOTTOM - 1, SPAN_TO - SPAN_FROM + 12, 1);
-    // kratownica w pomoście
+    // kratownica w pomoście (X-y z refleksem) i drugi rząd nitów
     for (let x = SPAN_FROM; x < SPAN_TO; x += 8) {
-      for (let i = 0; i < 5; i++) bed.fillRect(x + i, DECK_TOP + 1 + i, 1, 1);
+      for (let i = 0; i < 5; i++) {
+        bed.fillStyle = PAL.bridgeShade;
+        bed.fillRect(x + i, DECK_TOP + 1 + i, 1, 1);
+        bed.fillStyle = PAL.bridgeHi;
+        bed.fillRect(x + 4 - i, DECK_TOP + 1 + i, 1, 1);
+      }
+      bed.fillStyle = PAL.bridgeRivet;
+      bed.fillRect(x + 2, DECK_BOTTOM - 2, 1, 1);
     }
 
     // filary do dna doliny, poszerzone u podstawy
@@ -75,9 +98,11 @@ export const bridge: SegmentDef = {
         bed.fillStyle = PAL.bridgeShade;
         bed.fillRect(px + PIER_W + widen - 2, y, 2, 1);
       }
-      // głowica filara
+      // głowica filara i poziome spoiny co 12 px
       bed.fillStyle = PAL.bridgeHi;
       bed.fillRect(px - 2, DECK_BOTTOM + 2, PIER_W + 4, 1);
+      bed.fillStyle = PAL.bridgeShade;
+      for (let y = DECK_BOTTOM + 14; y < H - 30; y += 12) bed.fillRect(px + 1, y, PIER_W - 3, 1);
     }
   },
 };
