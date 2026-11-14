@@ -9,6 +9,9 @@ import type { Placed, SegmentEnv } from './segments/types';
 interface Rendered { back: HTMLCanvasElement; bed: HTMLCanvasElement; front: HTMLCanvasElement }
 interface Item { p: Placed; x: number; r: Rendered }
 
+/** Ile px przed ekranem renderujemy segmenty zawczasu. */
+const LOOKAHEAD = 640;
+
 export class World {
   readonly route = new Route(ROUTE_SEED, REGISTRY, LANDMARK_ORDER);
   private cache = new Map<number, Rendered>();
@@ -28,17 +31,22 @@ export class World {
 
   /** Wywołać raz na klatkę przed rysowaniem. camX = Math.floor(worldX). */
   prepare(camX: number): void {
-    const vis = this.route.visible(camX, camX + W);
+    // segmenty tuż za prawą krawędzią renderujemy zawczasu (max 1 na klatkę),
+    // żeby wjazd nowego odcinka nie powodował przycięcia animacji
+    const vis = this.route.visible(camX, camX + W + LOOKAHEAD);
     const keep = new Set<number>();
-    this.items = vis.map((p) => {
+    let budget = 1;
+    this.items = [];
+    for (const p of vis) {
       keep.add(p.index);
+      const onScreen = p.startX < camX + W;
       let r = this.cache.get(p.index);
-      if (!r) {
+      if (!r && (onScreen || budget-- > 0)) {
         r = this.render(p);
         this.cache.set(p.index, r);
       }
-      return { p, x: p.startX - camX, r };
-    });
+      if (onScreen && r) this.items.push({ p, x: p.startX - camX, r });
+    }
     for (const k of this.cache.keys()) if (!keep.has(k)) this.cache.delete(k);
   }
 

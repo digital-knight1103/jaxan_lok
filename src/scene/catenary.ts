@@ -11,6 +11,12 @@ const POLE_TOP = CONTACT_WIRE_Y - 16;
 const MESSENGER_Y = CONTACT_WIRE_Y - 11;
 const SAG = 5;
 
+/** y liny nośnej w punkcie świata wx (słupy stoją co POLE_STEP od 0). */
+export function messengerYAt(wx: number, sway = 0): number {
+  const u = (((wx % POLE_STEP) + POLE_STEP) % POLE_STEP) / POLE_STEP;
+  return MESSENGER_Y + Math.round((SAG + sway) * 4 * u * (1 - u));
+}
+
 /** Ekranowe x słupów dla danego worldX. */
 function poleXs(worldX: number): number[] {
   const first = Math.floor(worldX / POLE_STEP) * POLE_STEP - Math.floor(worldX);

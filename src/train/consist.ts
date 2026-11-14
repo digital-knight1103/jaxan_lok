@@ -10,9 +10,13 @@ import { WHEEL_FRAMES } from '../sprites/wheels';
 /** Odstęp między pojazdami (zderzaki stykają się). */
 const GAP = 1;
 
+
 export class Consist {
   /** Przejechana droga w px (tylko do animacji kół – zawijana). */
   private dist = 0;
+  private kmh = 0;
+  /** Przesunięcie „pływającej" kamery (px) – pociąg lekko wysuwa się przy przyspieszaniu. */
+  shift = 0;
   /** Załadunek każdego wagonu 0..1. */
   loads: number[];
 
@@ -24,7 +28,13 @@ export class Consist {
     return this.loads.length;
   }
 
+  /** Ekranowe x lewej krawędzi lokomotywy. */
+  get locoX(): number {
+    return TRAIN_X + Math.round(this.shift);
+  }
+
   update(dt: number, kmh: number): void {
+    this.kmh = kmh;
     // zawijamy, żeby liczba nie rosła bez końca (praca wielogodzinna)
     this.dist = (this.dist + kmh * PX_PER_KMH * dt) % 100000;
   }
@@ -34,19 +44,25 @@ export class Consist {
     return Math.floor((this.dist / (Math.PI * d)) * 8) % WHEEL_FRAMES;
   }
 
+  /** Drgania pudła na nierównościach toru (±1 px, faza różna dla każdego pojazdu). */
+  private bounce(i: number): number {
+    const amp = Math.min(1, this.kmh / 40);
+    return Math.round(Math.sin(this.dist * 0.045 + i * 1.7) * Math.sin(this.dist * 0.013 + i) * amp * 1.4);
+  }
+
   /** Prostokąt lokomotywy na ekranie (do klikania). */
   locoRect(): { x: number; y: number; w: number; h: number } {
-    return { x: TRAIN_X, y: TRACK_Y - LOCO_H, w: LOCO_W, h: LOCO_H };
+    return { x: this.locoX, y: TRACK_Y - LOCO_H, w: LOCO_W, h: LOCO_H };
   }
 
   /** x lewej krawędzi i-tego wagonu (wagony ciągnięte w lewo od lokomotywy). */
   wagonX(i: number): number {
-    return TRAIN_X - (i + 1) * (WAGON_W + GAP);
+    return this.locoX - (i + 1) * (WAGON_W + GAP);
   }
 
   /** Ekranowe x kół widocznych pojazdów (iskry hamulcowe). */
   wheelXs(): number[] {
-    const xs = LOCO_WHEEL_X.map((wx) => TRAIN_X + wx);
+    const xs = LOCO_WHEEL_X.map((wx) => this.locoX + wx);
     for (let i = 0; i < this.loads.length; i++) {
       const x = this.wagonX(i);
       if (x + WAGON_W < 0) break;
@@ -58,9 +74,10 @@ export class Consist {
   /** Światła lokomotywy nocą: reflektory, stożek światła na torze, czerwone tylne. */
   drawLights(ctx: CanvasRenderingContext2D, night: number): void {
     if (night <= 0.02) return;
-    const top = TRACK_Y - LOCO_H;
+    const X = this.locoX;
+    const top = TRACK_Y - LOCO_H + this.bounce(-1);
     const low = LOCO_LIGHTS.front[1];
-    const lx = TRAIN_X + low.x + 2;
+    const lx = X + low.x + 2;
     const ly = top + low.y;
     // stożek światła rozszerzający się ku szynom
     ctx.fillStyle = PAL.headlight;
@@ -73,37 +90,39 @@ export class Consist {
     // reflektory i poświata
     for (const l of LOCO_LIGHTS.front) {
       ctx.globalAlpha = night * 0.45;
-      disc(ctx, TRAIN_X + l.x, top + l.y, 3, PAL.headlight);
+      disc(ctx, X + l.x, top + l.y, 3, PAL.headlight);
       ctx.globalAlpha = night;
       ctx.fillStyle = PAL.headlight;
-      ctx.fillRect(TRAIN_X + l.x - 1, top + l.y, 2, 1);
+      ctx.fillRect(X + l.x - 1, top + l.y, 2, 1);
     }
     for (const l of LOCO_LIGHTS.rear) {
       ctx.globalAlpha = night;
       ctx.fillStyle = PAL.tailRed;
-      ctx.fillRect(TRAIN_X + l.x - 1, top + l.y, 2, 1);
+      ctx.fillRect(X + l.x - 1, top + l.y, 2, 1);
     }
     ctx.globalAlpha = 1;
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
-    // wagony (od najdalszego), potem lokomotywa
+    // wagony (od najdalszego), potem lokomotywa; pudła drgają, koła zostają na szynie
     for (let i = this.loads.length - 1; i >= 0; i--) {
       const x = this.wagonX(i);
       if (x + WAGON_W < 0) continue;
       const s = getEamos(this.loads[i]);
       const y = TRACK_Y - WAGON_H;
-      ctx.drawImage(s.body, x, y);
+      ctx.drawImage(s.body, x, y + this.bounce(i));
       const wf = s.wheels[this.wheelFrame(s.wheels[0].width)];
       for (const wx of WAGON_WHEEL_X) ctx.drawImage(wf, x + wx - (wf.width >> 1), y + WAGON_WHEEL_Y);
       ctx.drawImage(s.bogies, x, y);
     }
     const l = getDragon2();
+    const X = this.locoX;
     const y = TRACK_Y - LOCO_H;
-    ctx.drawImage(l.pantograph, TRAIN_X, y);
-    ctx.drawImage(l.body, TRAIN_X, y);
+    const by = y + this.bounce(-1);
+    ctx.drawImage(l.pantograph, X, y); // sprężyna dociska ślizg do przewodu – bez drgań
+    ctx.drawImage(l.body, X, by);
     const wf = l.wheels[this.wheelFrame(l.wheels[0].width)];
-    for (const wx of LOCO_WHEEL_X) ctx.drawImage(wf, TRAIN_X + wx - (wf.width >> 1), y + LOCO_WHEEL_Y);
-    ctx.drawImage(l.bogies, TRAIN_X, y);
+    for (const wx of LOCO_WHEEL_X) ctx.drawImage(wf, X + wx - (wf.width >> 1), y + LOCO_WHEEL_Y);
+    ctx.drawImage(l.bogies, X, y);
   }
 }

@@ -112,6 +112,8 @@ export const PAL = {
   palaceShade: '#9E8E7A',
   palaceRoof: '#5E6474',
   lampGlow: '#FFE6A0',
+  bird: '#26222A',
+
   // --- iskry, HUD ---
   spark: '#FF9A30',
   sparkHot: '#FFF4B0',

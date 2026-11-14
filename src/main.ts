@@ -1,6 +1,6 @@
 // JAXAN Express – start i sklejenie modułów: stan, wejście, pętla, rysowanie warstw.
 import {
-  START_KMH, PX_PER_KMH, TRACK_Y, TRAIN_X, W, H, CURSOR_HIDE_MS, HUD_HIDE_MS, AUTO_RESUME_MS,
+  START_KMH, PX_PER_KMH, TRACK_Y, W, H, CURSOR_HIDE_MS, HUD_HIDE_MS, AUTO_RESUME_MS,
 } from './config';
 import { PAL } from './palette';
 import { initialState } from './state';
@@ -17,6 +17,7 @@ import { ForegroundLayer } from './scene/foreground';
 import { drawTrack } from './scene/track';
 import { drawPoles, drawWires } from './scene/catenary';
 import { Sparks } from './scene/sparks';
+import { Birds } from './scene/birds';
 import { World } from './scene/world';
 import { Consist } from './train/consist';
 import { stepSpeed, adjustTarget } from './train/physics';
@@ -90,6 +91,7 @@ const consist = new Consist(state.wagons);
 const sparks = new Sparks();
 const hud = new Hud();
 const audio = new AudioEngine();
+const birds = new Birds(Math.floor(worldX));
 
 // --- bezczynność: kursor, HUD, powrót do automatu ---
 const cursorIdle = new IdleTracker(CURSOR_HIDE_MS);
@@ -103,6 +105,7 @@ function action(a: Action): void {
       if (!state.horn) {
         state.horn = true;
         audio.hornStart();
+        birds.scare(Math.floor(worldX)); // także przy wyciszonym dźwięku
       }
       break;
     case 'horn-up':
@@ -177,10 +180,66 @@ bindInput(screen.canvas, {
   },
 });
 
+let braking = false;
+
+/** Jeden krok symulacji (bez wejścia i rysowania) – używany też przez test ?soak. */
+function simulate(dt: number): void {
+  time += dt;
+  dayCycle.update(dt);
+  const prev = state.kmh;
+  state.kmh = stepSpeed(state.kmh, state.running ? state.targetKmh : 0, dt);
+  braking = state.kmh < prev - 1e-9;
+  worldX += state.kmh * PX_PER_KMH * dt;
+  consist.update(dt, state.kmh);
+  // „pływająca" kamera: pociąg lekko wysuwa się przy przyspieszaniu, cofa przy hamowaniu
+  const accel = dt > 0 ? (state.kmh - prev) / dt : 0;
+  const target = Math.max(-6, Math.min(6, accel * 1.5));
+  consist.shift += (target - consist.shift) * Math.min(1, dt * 1.2);
+  clouds.update(dt);
+  birds.update(dt, Math.floor(worldX), time);
+  if (braking && state.kmh > 3) sparks.brake(consist.wheelXs(), TRACK_Y - 1, 3 + state.kmh / 20, dt);
+  // nocą pantograf iskrzy na przewodzie – częściej przy dużej prędkości
+  if (dayCycle.night > 0.3 && state.kmh > 10 && Math.random() < (0.3 + state.kmh / 60) * dt) {
+    sparks.pantograph(consist.locoX + PANTO_CONTACT.x, TRACK_Y - LOCO_H + PANTO_CONTACT.y);
+  }
+  sparks.update(dt);
+}
+
+/**
+ * Test wytrzymałości (?soak[=godziny]): symulacja wielu godzin bez rysowania,
+ * z hamowaniem i trąbieniem co jakiś czas. Wynik: liczniki pamięci w konsoli
+ * i w window.__soak – muszą być stałe niezależnie od czasu.
+ */
+function soak(hours: number): void {
+  const dt = 0.1;
+  const steps = Math.round((hours * 3600) / dt);
+  const samples: { h: number; segments: number; canvases: number; sparks: number }[] = [];
+  const t0 = performance.now();
+  for (let i = 0; i < steps; i++) {
+    const s = i * dt;
+    if (s % 90 < dt) state.running = !state.running; // co 1,5 min start/stop
+    if (s % 300 < dt) birds.scare(Math.floor(worldX));
+    simulate(dt);
+    world.prepare(Math.floor(worldX));
+    if (i % Math.round(3600 / dt) === 0 || i === steps - 1) {
+      samples.push({
+        h: +(s / 3600).toFixed(2),
+        segments: world.route.cachedCount,
+        canvases: world.cachedCanvases,
+        sparks: sparks.alive,
+      });
+    }
+  }
+  // px → km: worldX = Σ(km/h · s) · PX_PER_KMH
+  const result = { hours, km: Math.round(worldX / PX_PER_KMH / 3600), ms: Math.round(performance.now() - t0), samples };
+  console.log('[soak]', JSON.stringify(result));
+  (window as unknown as Record<string, unknown>).__soak = result;
+}
+if (params.has('soak')) soak(Number(params.get('soak')) || 8);
+
 startLoop(
   (dt) => {
     const now = performance.now();
-    time += dt;
     document.body.classList.toggle('hide-cursor', cursorIdle.isIdle(now));
     hud.update(dt, !hudIdle.isIdle(now));
     // po kilku minutach bez dotykania scena wraca do jazdy automatycznej
@@ -190,26 +249,14 @@ startLoop(
       state.dayAuto = true;
       dayCycle.resumeAuto();
     }
-    dayCycle.update(dt);
-
-    const prev = state.kmh;
-    state.kmh = stepSpeed(state.kmh, state.running ? state.targetKmh : 0, dt);
-    const braking = state.kmh < prev - 1e-9;
-    worldX += state.kmh * PX_PER_KMH * dt;
-    consist.update(dt, state.kmh);
-    clouds.update(dt);
-    if (braking && state.kmh > 3) sparks.brake(consist.wheelXs(), TRACK_Y - 1, 3 + state.kmh / 20, dt);
-    // nocą pantograf iskrzy na przewodzie – częściej przy dużej prędkości
-    if (dayCycle.night > 0.3 && state.kmh > 10 && Math.random() < (0.3 + state.kmh / 60) * dt) {
-      sparks.pantograph(TRAIN_X + PANTO_CONTACT.x, TRACK_Y - LOCO_H + PANTO_CONTACT.y);
-    }
-    sparks.update(dt);
+    simulate(dt);
     audio.update(state.kmh, braking, dt);
   },
   () => {
     const camX = Math.floor(worldX);
     const night = dayCycle.night;
     const env: SegmentEnv = { night, time };
+    const sway = Math.sin(time * 0.9) * 1.2; // kołysanie liny nośnej
     world.prepare(camX);
 
     // 1. niebo, gwiazdy, słońce/księżyc
@@ -233,7 +280,8 @@ startLoop(
     // 3. pociąg, przewody i pierwszy plan (też przyciemniane)
     fctx.clearRect(0, 0, W, H);
     consist.draw(fctx);
-    drawWires(fctx, camX);
+    drawWires(fctx, camX, sway);
+    birds.draw(fctx, camX, sway);
     world.drawFront(fctx);
     fore.draw(fctx, worldX);
     applyTint(fctx, night, dayCycle.warmth, 0.5); // pociąg – bohater sceny – czytelny także nocą
