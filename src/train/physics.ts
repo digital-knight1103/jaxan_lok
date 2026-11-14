@@ -18,3 +18,11 @@ export function stepSpeed(kmh: number, targetKmh: number, dt: number): number {
 export function adjustTarget(target: number, dir: number): number {
   return Math.min(MAX_KMH, Math.max(0, target + Math.sign(dir) * SPEED_STEP_KMH));
 }
+
+/** Hamowanie nagłe (RADIOSTOP) – km/h na sekundę. */
+export const EMERGENCY_KMH_S = 22;
+
+/** Krok hamowania nagłego do zatrzymania. */
+export function emergencyStep(kmh: number, dt: number): number {
+  return Math.max(0, kmh - EMERGENCY_KMH_S * dt);
+}

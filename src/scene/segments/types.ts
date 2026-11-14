@@ -36,6 +36,8 @@ export interface SegmentDef {
   lights?(ctx: CanvasRenderingContext2D, x: number, env: SegmentEnv, seed: number): void;
   /** x leja załadowczego względem początku segmentu (kopalnia). */
   hopperX?: number;
+  /** Stacja z semaforami: tarcza ostrzegawcza 1 km przed i semafor wjazdowy przed peronem. */
+  signals?: boolean;
   /** Ikona na mapie trasy (brak = segment nie pojawia się na mapie). */
   mapIcon?: MapIcon;
   /** Podpis na mapie (np. nazwa stacji). */

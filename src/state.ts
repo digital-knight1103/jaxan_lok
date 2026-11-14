@@ -10,6 +10,8 @@ export interface AppState {
   dayAuto: boolean;
   wagons: number;
   hudVisible: boolean;
+  /** Jazda automatyczna (sama respektuje semafory); false = prowadzi użytkownik. */
+  autoDrive: boolean;
 }
 
 export function initialState(): AppState {
@@ -22,5 +24,6 @@ export function initialState(): AppState {
     dayAuto: true,
     wagons: DEFAULT_WAGONS,
     hudVisible: true,
+    autoDrive: true,
   };
 }

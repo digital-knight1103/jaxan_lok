@@ -27,6 +27,10 @@ export interface HudState {
   night: boolean;
   muted: boolean;
   horn: boolean;
+  /** Jazda automatyczna czy ręczna. */
+  auto: boolean;
+  /** Najbliższy sygnał przed pociągiem (podgląd). */
+  signal: { label: string; km: number; color: string } | null;
 }
 
 interface Button { action: Action; key: string; icon: (s: HudState) => string; active: (s: HudState) => boolean }
@@ -47,6 +51,8 @@ const PY = 6;
 const PW = 140;
 const PH = 60;
 const BTN = 13;
+/** Wysokość paska podglądu sygnału pod panelem. */
+const SIG_H = 12;
 const BTN_Y = PY + 31;
 const BTN_X0 = PX + 5;
 const BTN_STEP = 18;
@@ -80,7 +86,7 @@ export class Hud {
 
   /** Czy punkt leży na panelu (klik w panel nie trąbi itp.). */
   contains(x: number, y: number): boolean {
-    return this.alpha >= 0.5 && x >= PX && x < PX + PW && y >= PY && y < PY + PH;
+    return this.alpha >= 0.5 && x >= PX && x < PX + PW && y >= PY && y < PY + PH + 2 + SIG_H;
   }
 
   draw(ctx: CanvasRenderingContext2D, s: HudState): void {
@@ -115,6 +121,24 @@ export class Hud {
     const tLabel = `CEL ${s.targetKmh}`;
     drawText(ctx, tLabel, BAR.x + BAR.w - textWidth(tLabel), PY + 5, PAL.hudDim);
     drawText(ctx, s.running ? '' : 'STOP', BAR.x, PY + 25, PAL.locoMagentaHi);
+
+    // podgląd najbliższego sygnału i tryb jazdy – pasek pod panelem
+    const sy = PY + PH + 2;
+    ctx.fillStyle = PAL.hudBg;
+    ctx.fillRect(PX, sy, PW, SIG_H);
+    ctx.fillStyle = PAL.locoMagenta;
+    ctx.fillRect(PX, sy + SIG_H - 1, PW, 1);
+    const mode = s.auto ? 'AUTO' : 'RĘCZNA';
+    drawText(ctx, mode, PX + PW - 5 - textWidth(mode), sy + 4, s.auto ? PAL.jaxanGreen : PAL.locoMagentaHi);
+    if (s.signal) {
+      ctx.fillStyle = PAL.sigHead;
+      ctx.fillRect(PX + 4, sy + 2, 7, 8);
+      ctx.fillStyle = s.signal.color;
+      ctx.fillRect(PX + 6, sy + 4, 3, 3);
+      drawText(ctx, `${s.signal.label} ${s.signal.km.toFixed(1)} KM`, PX + 15, sy + 4, PAL.hudText);
+    } else {
+      drawText(ctx, 'BRAK SYGNAŁÓW', PX + 5, sy + 4, PAL.hudDim);
+    }
 
     // przyciski + skróty klawiszowe pod spodem
     BUTTONS.forEach((b, i) => {

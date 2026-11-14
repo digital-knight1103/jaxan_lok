@@ -22,6 +22,8 @@ export interface Poi {
   width: number;
   /** x świata punktu (stacja: dworzec, kopalnia: lej, most/zakład: środek). */
   anchorX: number;
+  /** Stacja z semaforami. */
+  signals: boolean;
 }
 
 /** worldX, przy którym pociąg ma stanąć dla danego punktu. */
@@ -72,6 +74,7 @@ export class RouteIndex {
           startX: p.startX,
           width: p.def.width,
           anchorX: p.startX + (p.def.mapAnchor ?? Math.round(p.def.width / 2)),
+          signals: !!p.def.signals,
         });
       }
       this.frontier += STEP;

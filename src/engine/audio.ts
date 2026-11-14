@@ -212,4 +212,27 @@ export class AudioEngine {
     }
     g.linearRampToValueAtTime(0, from + 0.3); // wygaszanie
   }
+
+  /** RADIOSTOP: przenikliwy, przerywany alarm dwutonowy (~2,5 s) po przejechaniu sygnału STÓJ. */
+  radiostop(): void {
+    if (!this.ctx || !this.master || this.muted) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    const g = ctx.createGain();
+    g.gain.value = 0;
+    for (let i = 0; i < 10; i++) {
+      const t = now + i * 0.25;
+      osc.frequency.setValueAtTime(i % 2 ? 1040 : 760, t);
+      g.gain.setValueAtTime(AUDIO.radiostop, t);
+      g.gain.setValueAtTime(0, t + 0.2);
+    }
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 2400;
+    osc.connect(lp).connect(g).connect(this.master);
+    osc.start(now);
+    osc.stop(now + 2.6);
+  }
 }

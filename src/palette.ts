@@ -172,6 +172,17 @@ export const PAL = {
   cloudShade: '#9AAEB8',
   cloudDark: '#6E8A9C',
 
+  // --- semafory świetlne PKP ---
+  sigHead: '#121216',
+  sigMast: '#9A9EA6',
+  sigMastShade: '#5E626A',
+  sigOff: '#2E2E34',
+  sigGreen: '#3CF07A',
+  sigOrange: '#FFA82E',
+  sigRed: '#FF3B30',
+  sigPlate: '#F2F2F2',
+  sigAlert: '#FF4A3E',
+
   // --- góry ---
   mountFar: '#7FA6BC',
   mountFarHi: '#A4C4D2',

@@ -6,6 +6,10 @@ import { PAL } from '../palette';
 import { drawText, textWidth } from '../engine/font';
 import { KM_PX, MAP_RANGE_KM, type Poi, type RouteIndex } from '../scene/routeindex';
 import type { MapIcon } from '../scene/segments/types';
+import { SEM_BEFORE_STATION_PX } from '../train/signals';
+
+/** Kolor znacznika sygnału na mapie (id stacji, rodzaj sygnału). */
+export type SignalColorFn = (stationIndex: number, kind: 'warn' | 'sem') => string;
 
 // geometria (piksele gry)
 const PANEL = { x: 110, y: H - 18, w: 420, h: 15 };
@@ -107,7 +111,7 @@ export class RouteMap {
     return this.poiAt(x, this.center(trainX));
   }
 
-  draw(ctx: CanvasRenderingContext2D, trainX: number, alpha: number): void {
+  draw(ctx: CanvasRenderingContext2D, trainX: number, alpha: number, sigColor?: SignalColorFn): void {
     if (alpha <= 0) return;
     const center = this.center(trainX);
     ctx.globalAlpha = alpha;
@@ -137,6 +141,20 @@ export class RouteMap {
       const mx = this.toMapX(km * KM_PX, center);
       ctx.fillStyle = km % 5 === 0 ? PAL.hudText : PAL.hudDim;
       ctx.fillRect(mx, lineY + 1, 1, km % 5 === 0 ? 2 : 1);
+    }
+
+    // semafory: drobne znaczniki nad torem (tarcza 1 km przed semaforem), kolor = sygnał
+    for (const p of this.visible(center)) {
+      if (!p.signals) continue;
+      const semX = p.startX - SEM_BEFORE_STATION_PX;
+      for (const [kind, wx] of [['warn', semX - Math.round(KM_PX)], ['sem', semX]] as const) {
+        const mx = this.toMapX(wx, center);
+        if (mx < BAR.x || mx > BAR.x + BAR.w) continue;
+        ctx.fillStyle = PAL.sigHead;
+        ctx.fillRect(mx - 1, lineY - 3, 3, 3);
+        ctx.fillStyle = sigColor ? sigColor(p.index, kind) : PAL.sigMast;
+        ctx.fillRect(mx, lineY - 2, 1, 1);
+      }
     }
 
     // punkty: najpierw mosty/zakłady, na wierzchu landmarki

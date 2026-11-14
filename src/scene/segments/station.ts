@@ -156,6 +156,7 @@ export const station: SegmentDef = {
   kind: 'landmark',
   width: WIDTH,
   weight: 0,
+  signals: true,
   mapIcon: 'station',
   mapLabel: STATION_NAME,
   mapAnchor: (B0 + B1) >> 1, // dworzec

@@ -63,4 +63,6 @@ export const AUDIO = {
   /** Pisk hamulców. */
   squealBase: 0.01,
   squealRange: 0.025,
+  /** Alarm RADIOSTOP (przejechanie sygnału STÓJ). */
+  radiostop: 0.07,
 } as const;

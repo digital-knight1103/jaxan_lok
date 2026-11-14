@@ -1,6 +1,6 @@
 // JAXAN Express – start i sklejenie modułów: stan, wejście, pętla, rysowanie warstw.
 import {
-  START_KMH, PX_PER_KMH, TRACK_Y, W, H, ROUTE_SEED, CURSOR_HIDE_MS, HUD_HIDE_MS, AUTO_RESUME_MS,
+  START_KMH, PX_PER_KMH, TRACK_Y, TRAIN_X, W, H, ROUTE_SEED, CURSOR_HIDE_MS, HUD_HIDE_MS, AUTO_RESUME_MS,
 } from './config';
 import { PAL } from './palette';
 import { initialState } from './state';
@@ -20,15 +20,18 @@ import { Sparks } from './scene/sparks';
 import { Birds } from './scene/birds';
 import { World } from './scene/world';
 import { Consist } from './train/consist';
-import { stepSpeed, adjustTarget } from './train/physics';
+import { stepSpeed, adjustTarget, emergencyStep } from './train/physics';
+import { SignalSystem } from './train/signals';
+import { drawSignalPosts, drawSignalLights, signalColor } from './scene/signals';
+import { drawText, textWidth } from './engine/font';
 import { Hud } from './ui/hud';
 import { RouteMap } from './ui/routemap';
-import { RouteIndex, ANCHOR_SCREEN_X, stopWorldX, type Poi } from './scene/routeindex';
+import { RouteIndex, ANCHOR_SCREEN_X, KM_PX, stopWorldX, type Poi } from './scene/routeindex';
 import { TravelAnim, type TravelFrame } from './scene/travel';
 import { REGISTRY, LANDMARK_ORDER } from './scene/segments/registry';
 import { DayCycle } from './scene/daycycle';
 import { Celestial } from './scene/celestial';
-import { LOCO_H, PANTO_CONTACT } from './sprites/dragon2';
+import { LOCO_H, LOCO_W, PANTO_CONTACT } from './sprites/dragon2';
 import type { SegmentEnv } from './scene/segments/types';
 
 const screen = createScreen();
@@ -109,6 +112,26 @@ const routeMap = new RouteMap(routeIndex);
 const travel = new TravelAnim();
 let travelFx: TravelFrame | null = null;
 let travelTarget = 0;
+// semafory przed stacjami
+const signals = new SignalSystem();
+/** Hamowanie nagłe po przejechaniu sygnału STÓJ (RADIOSTOP) – trwa do zatrzymania. */
+let emergency = false;
+/** Czas wyświetlania komunikatu o przejechaniu sygnału (s). */
+let alertT = 0;
+
+/** x świata czoła lokomotywy (do semaforów). */
+function trainFront(): number {
+  return worldX + TRAIN_X + LOCO_W;
+}
+
+/** Przejechanie sygnału STÓJ: alarm RADIOSTOP, hamowanie nagłe, komunikat. */
+function radiostop(): void {
+  emergency = true;
+  state.running = false;
+  state.targetKmh = 0;
+  alertT = 6;
+  audio.radiostop();
+}
 
 /** Pozycja „odniesienia" pociągu na trasie (ta sama, co kotwice punktów). */
 function trainRef(): number {
@@ -148,14 +171,17 @@ function action(a: Action): void {
       state.dayAuto = false;
       break;
     case 'toggle-run':
+      state.autoDrive = false;
       state.running = !state.running;
       if (state.running && state.targetKmh === 0) state.targetKmh = START_KMH;
       break;
     case 'faster':
+      state.autoDrive = false;
       state.targetKmh = adjustTarget(state.targetKmh, +1);
       state.running = true;
       break;
     case 'slower':
+      state.autoDrive = false;
       state.targetKmh = adjustTarget(state.targetKmh, -1);
       break;
     case 'toggle-mute':
@@ -197,6 +223,7 @@ bindInput(screen.canvas, {
     }
     if (hit && 'setTarget' in hit) {
       state.targetKmh = hit.setTarget;
+      state.autoDrive = false;
       if (hit.setTarget > 0) state.running = true;
       return;
     }
@@ -230,6 +257,7 @@ function simulate(dt: number): void {
   time += dt;
   dayCycle.update(dt);
   const prev = state.kmh;
+  const prevFront = trainFront();
   if (travel.active) {
     // szybki przejazd steruje pozycją i prędkością; na końcu pociąg stoi
     travelFx = travel.update(dt, worldX);
@@ -240,11 +268,30 @@ function simulate(dt: number): void {
       state.running = false;
       travelFx = null;
     }
+  } else if (emergency) {
+    state.kmh = emergencyStep(state.kmh, dt);
+    braking = state.kmh > 0;
+    worldX += state.kmh * PX_PER_KMH * dt;
+    if (state.kmh === 0) emergency = false;
   } else {
-    state.kmh = stepSpeed(state.kmh, state.running ? state.targetKmh : 0, dt);
+    // jazda automatyczna sama respektuje semafory (zwalnia, staje przed czerwonym, rusza)
+    const cap = state.autoDrive ? signals.cap(prevFront) : Infinity;
+    state.kmh = stepSpeed(state.kmh, state.running ? Math.min(state.targetKmh, cap) : 0, dt);
     braking = state.kmh < prev - 1e-9;
     worldX += state.kmh * PX_PER_KMH * dt;
   }
+  // semafory: stacje w pobliżu, zmiany świateł, wykrycie przejechania „stój"
+  const front = trainFront();
+  signals.sync(
+    routeIndex.between(Math.max(0, front - 2 * KM_PX), front + 2 * KM_PX).filter((p) => p.signals)
+      .map((p) => ({ index: p.index, startX: p.startX, width: p.width })),
+    front,
+  );
+  signals.update(front, state.kmh, dt);
+  // szybki przejazd z mapy omija semafory bez kar
+  if (travel.active || Math.abs(front - prevFront) > 400) signals.skip(front);
+  else if (signals.checkSpad(prevFront, front)) radiostop();
+  alertT = Math.max(0, alertT - dt);
   routeMap.update(dt);
   consist.update(dt, state.kmh);
   // „pływająca" kamera: pociąg lekko wysuwa się przy przyspieszaniu, cofa przy hamowaniu
@@ -303,6 +350,7 @@ startLoop(
       state.running = true;
       state.targetKmh = START_KMH;
       state.dayAuto = true;
+      state.autoDrive = true;
       dayCycle.resumeAuto();
     }
     simulate(dt);
@@ -328,11 +376,13 @@ startLoop(
     hills.draw(bctx, worldX);
     world.drawBack(bctx, env);
     drawPoles(bctx, camX);
+    drawSignalPosts(bctx, camX, signals.posts);
     world.drawBed(bctx);
     drawTrack(bctx, camX);
     applyTint(bctx, night, dayCycle.warmth);
     ctx.drawImage(backCanvas, 0, 0);
     world.drawLights(ctx, env);
+    drawSignalLights(ctx, camX, signals.posts, night, time);
 
     // 3. pociąg, przewody i pierwszy plan (też przyciemniane)
     fctx.clearRect(0, 0, W, H);
@@ -374,11 +424,43 @@ startLoop(
     hud.draw(ctx, {
       kmh: state.kmh, targetKmh: state.targetKmh, running: state.running,
       night: night > 0.5, muted: state.muted, horn: state.horn,
+      auto: state.autoDrive, signal: signalPreview(),
     });
-    routeMap.draw(ctx, trainRef(), hud.alpha);
+    drawAlert();
+    routeMap.draw(ctx, trainRef(), hud.alpha, (id, kind) => {
+      const p = signals.posts.find((q) => q.id === id);
+      return p ? signalColor(kind, p, time) : PAL.sigMast;
+    });
     screen.present();
   },
 );
+
+/** Podgląd najbliższego sygnału do HUD. */
+function signalPreview(): { label: string; km: number; color: string } | null {
+  const n = signals.nearest(trainFront());
+  if (!n) return null;
+  return { label: n.kind === 'sem' ? 'SEMAFOR' : 'TARCZA', km: n.dist / KM_PX, color: signalColor(n.kind, n.post, time) };
+}
+
+/** Komunikat o przejechaniu sygnału STÓJ (miga, niezależnie od HUD). */
+function drawAlert(): void {
+  if (alertT <= 0) return;
+  const l1 = 'PRZEJECHANIE SYGNAŁU STÓJ!';
+  const l2 = 'RADIOSTOP - HAMOWANIE NAGŁE';
+  const w1 = textWidth(l1, 2);
+  const bw = w1 + 24;
+  const bx = (W - bw) >> 1;
+  const by = 92;
+  ctx.globalAlpha = Math.min(1, alertT);
+  ctx.fillStyle = PAL.hudBg;
+  ctx.fillRect(bx, by, bw, 38);
+  ctx.fillStyle = time % 0.6 < 0.3 ? PAL.sigAlert : PAL.locoMagenta;
+  ctx.fillRect(bx, by, bw, 2);
+  ctx.fillRect(bx, by + 36, bw, 2);
+  drawText(ctx, l1, bx + 12, by + 10, PAL.sigAlert, 2);
+  drawText(ctx, l2, (W - textWidth(l2)) >> 1, by + 27, PAL.hudText);
+  ctx.globalAlpha = 1;
+}
 
 // --- uchwyt debugowy (tylko dev): zrzuty ekranu konkretnych miejsc trasy ---
 if (import.meta.env.DEV) {
@@ -387,6 +469,7 @@ if (import.meta.env.DEV) {
       (window as unknown as Record<string, unknown>).__jx = {
         state,
         travel,
+        signals,
         get worldX() {
           return worldX;
         },
