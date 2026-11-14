@@ -13,8 +13,10 @@ import { forest } from './forest';
 import { embankment } from './embankment';
 import { bridge } from './bridge';
 import { plant } from './plant';
+import { quarry } from './quarry';
+import { station } from './station';
 
-export const REGISTRY: SegmentDef[] = [forest, embankment, bridge, plant];
+export const REGISTRY: SegmentDef[] = [forest, embankment, bridge, plant, quarry, station];
 
 /** Kolejność punktów charakterystycznych na trasie (cyklicznie). */
 export const LANDMARK_ORDER: string[] = ['quarry', 'station'];

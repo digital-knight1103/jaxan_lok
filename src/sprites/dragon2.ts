@@ -1,7 +1,7 @@
 // Lokomotywa elektryczna Newag Dragon 2 w barwach JAXAN – widok z boku,
 // czoło w prawo (pociąg jedzie w prawo). Rysowana proceduralnie raz i cache'owana.
 import { PAL } from '../palette';
-import { cached, makeSprite, rect } from '../engine/sprite';
+import { cached, line, makeSprite, rect } from '../engine/sprite';
 import { drawText } from '../engine/font';
 import { getWheelFrames } from './wheels';
 
@@ -35,23 +35,6 @@ export const LOCO_LIGHTS = {
 /** Wcięcie skośnego czoła kabiny w wierszu y pudła (0 = dach). */
 function noseInset(y: number): number {
   return y < 10 ? Math.round((9 - y) * 0.7) : 0;
-}
-
-/** Linia Bresenhama piksel po pikselu. */
-function line(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, c: string): void {
-  const dx = Math.abs(x1 - x0);
-  const dy = -Math.abs(y1 - y0);
-  const sx = x0 < x1 ? 1 : -1;
-  const sy = y0 < y1 ? 1 : -1;
-  let err = dx + dy;
-  ctx.fillStyle = c;
-  for (;;) {
-    ctx.fillRect(x0, y0, 1, 1);
-    if (x0 === x1 && y0 === y1) break;
-    const e2 = 2 * err;
-    if (e2 >= dy) { err += dy; x0 += sx; }
-    if (e2 <= dx) { err += dx; y0 += sy; }
-  }
 }
 
 function drawBody(ctx: CanvasRenderingContext2D): void {

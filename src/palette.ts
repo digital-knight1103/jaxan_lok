@@ -83,6 +83,35 @@ export const PAL = {
   smokeHi: '#8A8E92',
   smokeDark: '#4A4E52',
 
+
+  // --- kopalnia kamienia ---
+  rockLight: '#CFC3AA',
+  rock: '#AEA28A',
+  rockShade: '#857A66',
+  rockDark: '#5E5548',
+  rockDust: '#E0D6BC',
+  machine: '#E8B020',
+  machineShade: '#A87A14',
+  machineDark: '#3A3220',
+  conveyor: '#5A5A60',
+  conveyorBelt: '#2A2A2E',
+
+  // --- stacja Kamieniec Ząbkowicki ---
+  brick: '#9A4E3A',
+  brickShade: '#6E3628',
+  brickHi: '#B86A50',
+  roof: '#3A3C48',
+  roofHi: '#555866',
+  trim: '#D8C8A8',
+  platform: '#9C9A92',
+  platformHi: '#BAB8AE',
+  platformEdge: '#E8D8A0',
+  signBlue: '#1E3A6E',
+  signBorder: '#E8E8EC',
+  palace: '#C9B8A0',
+  palaceShade: '#9E8E7A',
+  palaceRoof: '#5E6474',
+  lampGlow: '#FFE6A0',
   // --- sieć trakcyjna ---
   pole: '#5A5E66',
   poleHi: '#80848C',

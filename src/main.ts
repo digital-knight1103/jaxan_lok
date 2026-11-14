@@ -22,7 +22,8 @@ const params = new URLSearchParams(location.search);
 let worldX = Number(params.get('x') ?? 0) || 0;
 let kmh = START_KMH;
 let targetKmh = START_KMH;
-let running = true;
+let running = !params.has("stop");
+if (!running) kmh = 0;
 let time = 0;
 
 const far = new MountainLayer(7, 0.05, {
