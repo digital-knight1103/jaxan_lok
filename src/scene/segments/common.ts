@@ -90,12 +90,4 @@ export function plantBackItem(
   return s.width;
 }
 
-/** Tarcza pikselowa (bez wygładzania). */
-export function disc(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string): void {
-  ctx.fillStyle = color;
-  const R = Math.max(0, Math.round(r));
-  for (let dy = -R; dy <= R; dy++) {
-    const half = Math.floor(Math.sqrt(R * R - dy * dy));
-    ctx.fillRect(Math.round(cx) - half, Math.round(cy) + dy, half * 2 + 1, 1);
-  }
-}
+export { disc } from '../../engine/sprite';

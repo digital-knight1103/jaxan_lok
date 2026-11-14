@@ -47,3 +47,13 @@ export function line(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: 
     if (e2 <= dx) { err += dx; y0 += sy; }
   }
 }
+
+/** Tarcza pikselowa (bez wygładzania). */
+export function disc(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string): void {
+  ctx.fillStyle = color;
+  const R = Math.max(0, Math.round(r));
+  for (let dy = -R; dy <= R; dy++) {
+    const half = Math.floor(Math.sqrt(R * R - dy * dy));
+    ctx.fillRect(Math.round(cx) - half, Math.round(cy) + dy, half * 2 + 1, 1);
+  }
+}

@@ -1,7 +1,9 @@
 // Skład: lokomotywa Dragon 2 + N węglarek Eamos. Pociąg stoi w stałym miejscu
 // ekranu (TRAIN_X), a koła obracają się proporcjonalnie do przejechanej drogi.
 import { TRACK_Y, TRAIN_X, PX_PER_KMH, DEFAULT_WAGONS } from '../config';
-import { getDragon2, LOCO_H, LOCO_W, LOCO_WHEEL_X, LOCO_WHEEL_Y } from '../sprites/dragon2';
+import { getDragon2, LOCO_H, LOCO_LIGHTS, LOCO_W, LOCO_WHEEL_X, LOCO_WHEEL_Y } from '../sprites/dragon2';
+import { PAL } from '../palette';
+import { disc } from '../engine/sprite';
 import { getEamos, WAGON_H, WAGON_W, WAGON_WHEEL_X, WAGON_WHEEL_Y } from '../sprites/eamos';
 import { WHEEL_FRAMES } from '../sprites/wheels';
 
@@ -51,6 +53,37 @@ export class Consist {
       for (const wx of WAGON_WHEEL_X) xs.push(x + wx);
     }
     return xs;
+  }
+
+  /** Światła lokomotywy nocą: reflektory, stożek światła na torze, czerwone tylne. */
+  drawLights(ctx: CanvasRenderingContext2D, night: number): void {
+    if (night <= 0.02) return;
+    const top = TRACK_Y - LOCO_H;
+    const low = LOCO_LIGHTS.front[1];
+    const lx = TRAIN_X + low.x + 2;
+    const ly = top + low.y;
+    // stożek światła rozszerzający się ku szynom
+    ctx.fillStyle = PAL.headlight;
+    for (let dx = 0; dx < 150; dx++) {
+      const y0 = Math.round(ly - dx * 0.06);
+      const y1 = Math.min(TRACK_Y + 6, Math.round(ly + 1 + dx * 0.3));
+      ctx.globalAlpha = night * 0.3 * (1 - dx / 150);
+      ctx.fillRect(lx + dx, y0, 1, y1 - y0);
+    }
+    // reflektory i poświata
+    for (const l of LOCO_LIGHTS.front) {
+      ctx.globalAlpha = night * 0.45;
+      disc(ctx, TRAIN_X + l.x, top + l.y, 3, PAL.headlight);
+      ctx.globalAlpha = night;
+      ctx.fillStyle = PAL.headlight;
+      ctx.fillRect(TRAIN_X + l.x - 1, top + l.y, 2, 1);
+    }
+    for (const l of LOCO_LIGHTS.rear) {
+      ctx.globalAlpha = night;
+      ctx.fillStyle = PAL.tailRed;
+      ctx.fillRect(TRAIN_X + l.x - 1, top + l.y, 2, 1);
+    }
+    ctx.globalAlpha = 1;
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
