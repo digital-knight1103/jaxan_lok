@@ -74,7 +74,7 @@ tests/*.test.ts
 
 ## E1 – szkielet, skalowanie, niebo + 1 warstwa paralaksy
 
-### Zad. 1: Projekt Vite + skalowanie pikseli
+### Task 1: Projekt Vite + skalowanie pikseli
 
 **Pliki:** utwórz `package.json`, `index.html`, `vite.config.ts`, `tsconfig.json`, `vitest.config.ts`, `src/config.ts`, `src/palette.ts`, `src/engine/screen.ts`, `tests/screen.test.ts`
 
@@ -88,7 +88,7 @@ tests/*.test.ts
 - [ ] `npm run test` → FAIL; zaimplementuj; → PASS.
 - [ ] `screen.ts`: widoczny canvas na całe okno (devicePixelRatio uwzględnione, by ×3 było fizycznymi pikselami), tło #0E0E12, `present()` kopiuje bufor z `drawImage` w skali całkowitej; resize nasłuchiwany; `F` → Fullscreen API.
 
-### Zad. 2: Pętla, niebo, pierwsza warstwa gór
+### Task 2: Pętla, niebo, pierwsza warstwa gór
 
 **Pliki:** `src/engine/loop.ts`, `src/engine/rng.ts`, `src/scene/sky.ts`, `src/scene/mountains.ts`, `src/main.ts`, `tests/loop.test.ts`
 
@@ -104,7 +104,7 @@ tests/*.test.ts
 
 ## E2 – tabor i jazda
 
-### Zad. 3: Sprite'y Dragon 2 JAXAN i Eamos JAXAN
+### Task 3: Sprite'y Dragon 2 JAXAN i Eamos JAXAN
 
 **Pliki:** `src/engine/sprite.ts`, `src/engine/font.ts`, `src/sprites/dragon2.ts`, `src/sprites/eamos.ts`, `tests/font.test.ts`
 
@@ -115,7 +115,7 @@ tests/*.test.ts
 - [ ] Dragon 2 150×44 (bez pantografu): czarne kabiny o skośnych czołach, magentowy środek z cieniem/blaskiem, szewrony czarny-zielony-czarny przy obu kabinach (skierowane jak na referencji), logo „JAXAN" z X-rombem, kratki wentylacyjne, rama + 2 wózki trzyosiowe, białe drobne napisy, reflektory 2 dolne + 1 górny.
 - [ ] Eamos 96×40: czarne pudło z pionowymi żebrami, zielony pas u góry przechodzący w magentę, „X" zielono-magentowy po prawej, białe tabliczki, magentowe poręcze, bufory, 2 wózki dwuosiowe; ładunek szarego kruszywa z nierównym wierzchem (wysokość zależna od `load`).
 
-### Zad. 4: Fizyka jazdy i skład
+### Task 4: Fizyka jazdy i skład
 
 **Pliki:** `src/train/physics.ts`, `src/train/consist.ts`, `src/scene/track.ts` (prosta wersja: szyny + podkłady), `tests/physics.test.ts`
 
@@ -131,7 +131,7 @@ tests/*.test.ts
 
 ## E3 – pełna paralaksa, trasa, most, sieć trakcyjna
 
-### Zad. 5: Warstwy tła i pierwszego planu
+### Task 5: Warstwy tła i pierwszego planu
 
 **Pliki:** `src/scene/clouds.ts`, `src/scene/mountains.ts` (druga warstwa), `src/sprites/nature.ts`, `src/scene/catenary.ts`
 
@@ -140,7 +140,7 @@ tests/*.test.ts
 - [ ] Kolejność i współczynniki: góry 0,05 i 0,1; chmury 0,15 + własny dryf; średni plan 0,4; sieć i tor 1,0; pierwszy plan 1,3.
 - [ ] Pantograf styka się z przewodem jezdnym (dopasuj wysokość).
 
-### Zad. 6: Generator trasy i segmenty
+### Task 6: Generator trasy i segmenty
 
 **Pliki:** `src/scene/segments/types.ts`, `registry.ts`, `forest.ts`, `embankment.ts`, `bridge.ts`, `plant.ts`, `src/scene/route.ts`, `tests/route.test.ts`
 
@@ -165,7 +165,7 @@ Opowieść: po landmarku dokładane są fillery aż do `LANDMARK_SPACING_PX`, po
 - [ ] Weryfikacja E3: build, Playwright → `screenshots/e3.png` (kadr z mostem); porównaj kompozycję ze `styl.jpg`.
 - [ ] Commit `E3: paralaksa, generator trasy, most i sieć trakcyjna`.
 
-### Zad. 7: Landmarki – kopalnia i stacja Kamieniec Ząbkowicki
+### Task 7: Landmarki – kopalnia i stacja Kamieniec Ząbkowicki
 
 **Pliki:** `src/sprites/quarry.ts`, `src/sprites/station.ts`, `src/scene/segments/quarry.ts`, `src/scene/segments/station.ts`, `registry.ts`
 
@@ -178,7 +178,7 @@ Opowieść: po landmarku dokładane są fillery aż do `LANDMARK_SPACING_PX`, po
 
 ## E4 – interakcje MVP, HUD, dźwięk
 
-### Zad. 8: Stan, wejście, bezczynność, dźwięk
+### Task 8: Stan, wejście, bezczynność, dźwięk
 
 **Pliki:** `src/state.ts`, `src/engine/input.ts`, `src/engine/idle.ts`, `src/engine/audio.ts`, `tests/idle.test.ts`, `tests/audio.test.ts`
 
@@ -197,7 +197,7 @@ class AudioEngine { unlock(): void; setMuted(m: boolean): void; update(kmh: numb
 - [ ] Audio: stukot kół (2 uderzenia na złącze co 25 m wizualnie → tempo ∝ prędkość), szum silników (oscylator + filtr, ton rośnie z prędkością), trąbienie 370+466 Hz z narastaniem/wygaszaniem, pisk hamulców przy hamowaniu < 40 km/h. Start: `muted = true`.
 - [ ] Bezczynność 180 s → `running=true`, `targetKmh=START_KMH`, `dayAuto=true`.
 
-### Zad. 9: HUD
+### Task 9: HUD
 
 **Pliki:** `src/ui/hud.ts`
 
@@ -210,7 +210,7 @@ class AudioEngine { unlock(): void; setMuted(m: boolean): void; update(kmh: numb
 
 ## E5 – noc/dzień i oświetlenie
 
-### Zad. 10: Cykl dobowy
+### Task 10: Cykl dobowy
 
 **Pliki:** `src/scene/daycycle.ts`, `src/palette.ts`, `tests/daycycle.test.ts`, oraz `drawNight?` / użycie `env.night` w segmentach
 
@@ -230,7 +230,7 @@ class DayCycle { t: number /*0=północ,0.5=południe*/; auto: boolean;
 
 ## E6 – dopracowanie
 
-### Zad. 11: Ożywienie sceny i stabilność
+### Task 11: Ożywienie sceny i stabilność
 
 **Pliki:** `src/engine/pool.ts`, `src/scene/birds.ts`, `src/scene/sparks.ts`, `src/train/consist.ts`, `src/scene/catenary.ts`, `tests/pool.test.ts`
 
