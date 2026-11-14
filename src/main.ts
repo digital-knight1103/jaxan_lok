@@ -10,9 +10,8 @@ import { bindInput, type Action } from './engine/input';
 import { IdleTracker } from './engine/idle';
 import { AudioEngine } from './engine/audio';
 import { drawSky } from './scene/sky';
-import { MountainLayer } from './scene/mountains';
+import { ForestRidgeLayer } from './scene/ridges';
 import { CloudLayer } from './scene/clouds';
-import { HillLayer } from './scene/hills';
 import { ForegroundLayer } from './scene/foreground';
 import { drawTrack } from './scene/track';
 import { drawPoles, drawWires } from './scene/catenary';
@@ -84,21 +83,23 @@ function applyTint(c: CanvasRenderingContext2D, night: number, warmth: number, s
 }
 
 // --- warstwy sceny ---
-// trzy pasma gór: im dalej, tym bledsze i bardziej zamglone
-const farthest = new MountainLayer(3, 0.025, {
-  light: PAL.mountFarthestHi, shade: PAL.mountFarthest, haze: PAL.mountHaze, hazeAmount: 0.7,
-  baseY: 205, height: 88, roughness: 0.7,
+// 6 planów tła (styl2): niebo, trzy pasma zalesionych wzgórz (dalej = bledsze,
+// bardziej niebieskie), chmury między nimi i średni plan z polami na stokach
+const RIDGE = { roughness: 0.4, conifers: 0, meadows: 0, mist: 0.5 };
+const farthest = new ForestRidgeLayer(3, 0.02, {
+  ...RIDGE, baseY: 196, height: 62, smooth: 10, haze: 0.6, crown: [1, 2], tile: W,
 });
-const far = new MountainLayer(7, 0.05, {
-  light: PAL.mountFarHi, shade: PAL.mountFarShade, haze: PAL.mountHaze, hazeAmount: 0.75,
-  baseY: 215, height: 105, roughness: 0.8,
-});
-const near = new MountainLayer(13, 0.1, {
-  light: PAL.mountNearHi, shade: PAL.mountNear, haze: PAL.mountHaze, hazeAmount: 0.55,
-  baseY: 240, height: 90, roughness: 0.6,
+const far = new ForestRidgeLayer(7, 0.045, {
+  ...RIDGE, baseY: 214, height: 78, smooth: 12, haze: 0.28, crown: [3, 4], meadows: 0.25, tile: W,
 });
 const clouds = new CloudLayer(21);
-const hills = new HillLayer(31);
+const near = new ForestRidgeLayer(13, 0.1, {
+  ...RIDGE, baseY: 236, height: 74, smooth: 14, haze: 0.14, crown: [4, 5], conifers: 0.12, meadows: 0.4, tile: W * 2,
+});
+const hills = new ForestRidgeLayer(31, 0.4, {
+  ...RIDGE, roughness: 0.3, baseY: 262, height: 72, smooth: 16, haze: 0.08, crown: [4, 6], conifers: 0.18,
+  meadows: 0.55, mist: 0.7, tile: W * 2,
+});
 const fore = new ForegroundLayer(41);
 const world = new World();
 const consist = new Consist(state.wagons);
@@ -372,7 +373,10 @@ startLoop(
     world.prepare(camX);
 
     // 1. niebo, gwiazdy, słońce/księżyc
-    drawSky(ctx, dayCycle.skyColors(), H);
+    {
+      const sun = DayCycle.bodyPos(dayCycle.t);
+      drawSky(ctx, dayCycle.skyColors(), H, sun.x, sun.y, (1 - night) * (0.85 + 0.15 * dayCycle.warmth));
+    }
     celestial.draw(ctx, dayCycle, time);
 
     // 2. krajobraz za pociągiem (przyciemniany nocą) + światła okien i lamp

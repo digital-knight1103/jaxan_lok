@@ -1,10 +1,11 @@
-// Chmury pikselowe w stylu cumulus (jak na styl.jpg): kłęby nakładane od tyłu do
+// Chmury pikselowe w stylu cumulus (styl2.png): brzoskwiniowo-kremowe od słońca, lawendowy spód, ditherowany brzeg: kłęby nakładane od tyłu do
 // przodu, kremowy jasny brzeg od góry, płaski niebiesko-szary spód.
 // Paralaksa 0.15 + własny wolny dryf.
 import { W } from '../config';
 import { PAL } from '../palette';
 import { makeSprite } from '../engine/sprite';
 import { mulberry32 } from '../engine/rng';
+import { bayer } from '../engine/pixbuf';
 
 const WRAP = W * 2; // chmury zawijają się co 1280 px
 /** Od najjaśniejszego (brzeg) do najciemniejszego (spód). */
@@ -43,12 +44,14 @@ function makeCloud(rnd: () => number): HTMLCanvasElement {
           if (d > 1) continue;
           const x = Math.round(p.x) + dx;
           if (x < 0 || x >= w) continue;
+          // miękki, ditherowany brzeg kłębu (bez twardego konturu)
+          if (d > 0.84 && dy < p.r * 0.5 && (d - 0.84) / 0.16 > bayer(x, y)) continue;
           // światło z lewej-góry na kłębie + przyciemnienie ku podstawie całej chmury
           const lit = -(dx * 0.45 + dy * 0.9) / p.r; // -1..1
           const low = Math.max(0, (y - (base - h * 0.35)) / (h * 0.35)); // 0..1 przy spodzie
           let t = 1.6 - lit * 1.5 + low * 2.2;
-          if (d > 0.9 && dy < 0 && dx < p.r * 0.3) t = 0; // jasny brzeg od góry
-          if (d > 0.93 && dy > 0) t += 1; // ciemny obrys od dołu – kłęby się odcinają
+          if (d > 0.72 && dy < 0 && dx < p.r * 0.3) t = Math.min(t, 0.4); // złoty brzeg od słońca
+          if (d > 0.9 && dy > 0) t += 0.7; // chłodniejszy spód kłębu – kłęby się odcinają
           t += BAYER[(x & 1) + (y & 1) * 2] - 0.4;
           ctx.fillStyle = RAMP[Math.max(0, Math.min(RAMP.length - 1, Math.round(t)))];
           if (y === base) atBase[x] = 1;

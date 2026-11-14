@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mountainProfile } from '../src/scene/mountains';
+import { mountainProfile } from '../src/scene/ridges';
 
 describe('mountainProfile', () => {
   const style = { baseY: 200, height: 100, roughness: 0.7 };
