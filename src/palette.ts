@@ -18,6 +18,8 @@ export const PAL = {
   white: '#E8E8EC',
   headlight: '#FFF2C0',
   headlightOff: '#8A8A80',
+  tailOff: '#5A1E22',
+  tailRed: '#E0343C',
   wheelDark: '#141416',
   wheelRim: '#6A6A72',
   steel: '#8A8E96',
@@ -33,6 +35,13 @@ export const PAL = {
   aggregate: '#8C8A86',
   aggregateHi: '#B0ADA6',
   aggregateShade: '#5E5C5A',
+
+  // --- tor ---
+  railHead: '#B4B8BE',
+  railFoot: '#4A4A52',
+  sleeper: '#4A3A2E',
+  ballast: '#6E6A64',
+  ballastShade: '#4E4A46',
 
   // --- niebo (dzień) wg styl.jpg ---
   skyTop: '#3E6E9A',
