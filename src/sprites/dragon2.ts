@@ -2,7 +2,7 @@
 // czoło w prawo (pociąg jedzie w prawo). Rysowana proceduralnie raz i cache'owana.
 import { PAL } from '../palette';
 import { cached, line, makeSprite, rect } from '../engine/sprite';
-import { drawText } from '../engine/font';
+import { drawText, textWidth } from '../engine/font';
 import { getWheelFrames } from './wheels';
 
 /** Wymiary płótna sprite'a (z miejscem na pantograf nad dachem). */
@@ -50,26 +50,38 @@ function drawBody(ctx: CanvasRenderingContext2D): void {
   }
 
   // --- magentowy środek pudła + szewrony czarny-zielony-czarny przy obu kabinach ---
+  // Szewrony są lustrzanym odbiciem względem środka lokomotywy (x = 74,5):
+  // przy lewej kabinie grot w lewo „<", przy prawej grot w prawo „>".
+  // Każdy pas ma CHEV px grubości; zewnętrzny czarny przylega do czarnej kabiny.
+  const CHEV = 4;
+  const mirror = (x: number) => LOCO_W - 1 - x;
   for (let y = 3; y <= 25; y++) {
-    const s = Math.floor(Math.abs(y - 14) * 0.5); // kształt „<"
-    const magFrom = 31 + s;
-    const magTo = 105 + s;
+    const s = Math.floor(Math.abs(y - 14) * 0.5); // 0 w grocie, rośnie ku dachowi i ramie
+    const green = y >= 24 ? PAL.jaxanGreenShade : PAL.jaxanGreen;
     const c = y === 3 ? PAL.locoMagentaHi : y >= 24 ? PAL.locoMagentaShade : PAL.locoMagenta;
-    rect(ctx, magFrom, BT + y, magTo - magFrom + 1, 1, c);
-    // tył (lewa kabina): ...czarny | zielony | czarny | magenta
-    rect(ctx, 25 + s, BT + y, 4, 1, y >= 24 ? PAL.jaxanGreenShade : PAL.jaxanGreen);
-    // czoło (prawa kabina): magenta | czarny | zielony | czarny...
-    rect(ctx, 108 + s, BT + y, 4, 1, y >= 24 ? PAL.jaxanGreenShade : PAL.jaxanGreen);
+    const outer = 21 + s; // lewy szewron: czarny | zielony | czarny | magenta
+    const greenL = outer + CHEV;
+    const innerL = greenL + CHEV;
+    const magFrom = innerL + CHEV;
+    rect(ctx, magFrom, BT + y, mirror(magFrom) - magFrom + 1, 1, c);
+    // lewy „<"
+    rect(ctx, outer, BT + y, CHEV, 1, PAL.locoBlack);
+    rect(ctx, greenL, BT + y, CHEV, 1, green);
+    rect(ctx, innerL, BT + y, CHEV, 1, PAL.locoBlack);
+    // prawy „>" – odbicie lustrzane lewego
+    rect(ctx, mirror(innerL + CHEV - 1), BT + y, CHEV, 1, PAL.locoBlack);
+    rect(ctx, mirror(greenL + CHEV - 1), BT + y, CHEV, 1, green);
+    rect(ctx, mirror(outer + CHEV - 1), BT + y, CHEV, 1, PAL.locoBlack);
   }
 
-  // --- kratki wentylacyjne ---
-  for (const gx of [82, 93]) {
+  // --- kratki wentylacyjne (symetrycznie po bokach logo) ---
+  for (const gx of [41, 99]) {
     rect(ctx, gx, BT + 6, 9, 12, PAL.locoMagentaShade);
     for (let x = gx + 1; x < gx + 9; x += 2) rect(ctx, x, BT + 7, 1, 10, PAL.locoMagenta);
   }
 
-  // --- logo JAXAN (litery na siatce 5 px, skala 2 dla czytelności) ---
-  drawText(ctx, 'JAXAN', 38, BT + 9, PAL.logoDark, 2);
+  // --- logo JAXAN na środku pudła (litery na siatce 5 px, skala 2) ---
+  drawText(ctx, 'JAXAN', Math.round(LOCO_W / 2 - textWidth('JAXAN', 2) / 2), BT + 9, PAL.logoDark, 2);
 
   // --- połysk lakieru: przerywane refleksy na magencie i czarnych kabinach ---
   for (let x = 40; x < 100; x++) {
@@ -79,11 +91,11 @@ function drawBody(ctx: CanvasRenderingContext2D): void {
   for (let y = 3; y < 24; y++) {
     if (y % 7 < 5) {
       rect(ctx, 6, BT + y, 1, 1, PAL.bodyGloss); // tylna kabina
-      rect(ctx, 129, BT + y, 1, 1, PAL.bodyGloss); // czołowa kabina
+      rect(ctx, LOCO_W - 7, BT + y, 1, 1, PAL.bodyGloss); // czołowa kabina
     }
   }
   rect(ctx, 8, BT + 2, 12, 1, PAL.bodyGloss);
-  rect(ctx, 128, BT + 2, 12, 1, PAL.bodyGloss);
+  rect(ctx, LOCO_W - 20, BT + 2, 12, 1, PAL.bodyGloss);
 
   // --- kabiny: okna boczne, drzwi, poręcze, szyby czołowe ---
   const cab = (winX: number, doorX: number, rail1: number, rail2: number) => {
@@ -95,7 +107,7 @@ function drawBody(ctx: CanvasRenderingContext2D): void {
     rect(ctx, rail1, BT + 11, 1, 12, PAL.white);
     rect(ctx, rail2, BT + 11, 1, 12, PAL.white);
   };
-  cab(133, 119, 118, 126); // czoło
+  cab(133, 126, 125, 133); // czoło – lustrzanie do tylnej kabiny
   cab(10, 17, 16, 24); // tył
   // szyby czołowe wzdłuż skosu
   for (let y = 1; y <= 8; y++) {
