@@ -34,11 +34,11 @@ function buildStrip(c: SkyColors): HTMLCanvasElement {
 /** Poświata słońca: strefy o rosnącej krycia, dithering tylko na granicach stref. */
 const GLOW_W = 560;
 const GLOW_H = 320;
-let glow: HTMLCanvasElement | null = null;
-function buildGlow(): HTMLCanvasElement {
+const glows = new Map<string, HTMLCanvasElement>();
+function buildGlow(outer: string, mid: string, inner: string): HTMLCanvasElement {
   // kolor ze stałej palety, krycie w 6 krokach (alfa w ImageData – piksele dalej ostre)
   const ALPHA = [0, 0.16, 0.3, 0.45, 0.62, 0.8];
-  const cols = [PAL.skyGlowOuter, PAL.skyGlowOuter, PAL.skyGlowMid, PAL.skyGlowMid, PAL.skyGlowInner, PAL.skyGlowInner];
+  const cols = [outer, outer, mid, mid, inner, inner];
   const ramp = ALPHA.map((a, i) => ((rgba(cols[i]) & 0xffffff) | (Math.round(a * 255) << 24)) >>> 0);
   const b = new PixBuf(GLOW_W, GLOW_H);
   for (let y = 0; y < GLOW_H; y++) {
@@ -75,10 +75,19 @@ export function drawSky(
   }
   ctx.fillStyle = pattern!;
   ctx.fillRect(0, 0, W, bottom);
-  if (glowAmt > 0.01 && sunY > -GLOW_H / 2) {
-    glow ??= buildGlow();
-    ctx.globalAlpha = Math.min(1, glowAmt);
-    ctx.drawImage(glow, Math.round(sunX - GLOW_W / 2), Math.round(sunY - GLOW_H / 2));
-    ctx.globalAlpha = 1;
+  if (glowAmt > 0.01 && sunY > -GLOW_H / 2) drawGlow(ctx, 'sun', sunX, sunY, glowAmt);
+}
+
+/** Poświata ciała niebieskiego (słońce – ciepła, księżyc – chłodna), sprite'y cache'owane. */
+export function drawGlow(ctx: CanvasRenderingContext2D, kind: 'sun' | 'moon', x: number, y: number, amt: number): void {
+  let g = glows.get(kind);
+  if (!g) {
+    g = kind === 'sun'
+      ? buildGlow(PAL.skyGlowOuter, PAL.skyGlowMid, PAL.skyGlowInner)
+      : buildGlow(PAL.moonGlowOuter, PAL.moonGlowOuter, PAL.moonGlowInner);
+    glows.set(kind, g);
   }
+  ctx.globalAlpha = Math.min(1, amt);
+  ctx.drawImage(g, Math.round(x - GLOW_W / 2), Math.round(y - GLOW_H / 2));
+  ctx.globalAlpha = 1;
 }

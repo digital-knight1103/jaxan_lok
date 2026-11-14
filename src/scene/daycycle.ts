@@ -32,6 +32,37 @@ export class DayCycle {
     return clamp01(1 - Math.abs(this.elevation + 0.05) / 0.35);
   }
 
+  /**
+   * Złota godzina 0..1: słońce nisko nad horyzontem (rano i wieczorem) – ciepłe,
+   * boczne światło styl2. W południe ~0 (chłodniej), nocą 0.
+   */
+  get golden(): number {
+    const e = this.elevation;
+    const low = clamp01(1 - (e - 0.35) / 0.4);
+    return smooth(low) * (1 - this.night) * clamp01(e / 0.12 + 0.6);
+  }
+
+  /**
+   * Kierunek i siła światła na krawędziach (rim light): sunL – słońce z lewej,
+   * sunR – z prawej. Rano z lewej, wieczorem z prawej, w południe z góry (obie strony
+   * po połowie, słabiej). Nocą słaba poświata księżyca wg jego położenia.
+   */
+  get light(): { sunL: number; sunR: number; moon: boolean } {
+    const side = (x: number) => Math.max(-1, Math.min(1, (x / W - 0.5) / 0.3));
+    const sun = DayCycle.bodyPos(this.t);
+    const moon = DayCycle.bodyPos(this.t + 0.5);
+    // siła znika przy horyzoncie – tam pozycja „zawija się” na drugą stronę nieba
+    const sunK = (1 - this.night) * (0.55 + 0.45 * this.golden) * clamp01(sun.up / 0.2);
+    const moonK = this.night * 0.3 * clamp01(moon.up / 0.2);
+    const ss = side(sun.x);
+    const ms = side(moon.x);
+    return {
+      sunL: sunK * (1 - ss) / 2 + moonK * (1 - ms) / 2,
+      sunR: sunK * (1 + ss) / 2 + moonK * (1 + ms) / 2,
+      moon: this.night > 0.5,
+    };
+  }
+
   update(dt: number): void {
     if (this.trans) {
       const tr = this.trans;
@@ -64,10 +95,12 @@ export class DayCycle {
   skyColors(): SkyColors {
     const n = this.night;
     const w = this.warmth;
+    // południe chłodne → złota godzina → noc
+    const g = this.golden;
     const base = {
-      top: lerpColor(PAL.skyTop, PAL.skyNightTop, n),
-      mid: lerpColor(PAL.skyMid, PAL.skyNightMid, n),
-      horizon: lerpColor(PAL.skyHorizon, PAL.skyNightHorizon, n),
+      top: lerpColor(lerpColor(PAL.skyTop, PAL.skyGoldTop, g), PAL.skyNightTop, n),
+      mid: lerpColor(lerpColor(PAL.skyMid, PAL.skyGoldMid, g), PAL.skyNightMid, n),
+      horizon: lerpColor(lerpColor(PAL.skyHorizon, PAL.skyGoldHorizon, g), PAL.skyNightHorizon, n),
     };
     return {
       top: lerpColor(base.top, PAL.skyWarmTop, w * 0.5),

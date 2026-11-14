@@ -9,7 +9,7 @@ import { startLoop } from './engine/loop';
 import { bindInput, type Action } from './engine/input';
 import { IdleTracker } from './engine/idle';
 import { AudioEngine } from './engine/audio';
-import { drawSky } from './scene/sky';
+import { drawSky, drawGlow } from './scene/sky';
 import { ForestRidgeLayer } from './scene/ridges';
 import { CloudLayer } from './scene/clouds';
 import { ForegroundLayer } from './scene/foreground';
@@ -66,15 +66,15 @@ const [backCanvas, bctx] = layerCanvas();
 const [frontCanvas, fctx] = layerCanvas();
 
 /** Przyciemnienie nocą i ciepło zmierzchu – tylko na narysowanych pikselach. */
-function applyTint(c: CanvasRenderingContext2D, night: number, warmth: number, strength = 0.72): void {
+function applyTint(c: CanvasRenderingContext2D, night: number, warmth: number, strength = 0.72, golden = 0): void {
   c.globalCompositeOperation = 'source-atop';
   if (night > 0) {
     c.globalAlpha = night * strength;
     c.fillStyle = PAL.nightTint;
     c.fillRect(0, 0, W, H);
   }
-  if (warmth > 0) {
-    c.globalAlpha = warmth * 0.2;
+  if (warmth > 0 || golden > 0) {
+    c.globalAlpha = warmth * 0.2 + golden * 0.12; // zmierzch + złota godzina
     c.fillStyle = PAL.warmTint;
     c.fillRect(0, 0, W, H);
   }
@@ -368,30 +368,35 @@ startLoop(
   () => {
     const camX = Math.floor(worldX);
     const night = dayCycle.night;
-    const env: SegmentEnv = { night, time, sunL: 1, sunR: 0 }; // kierunek światła – etap C
+    const light = dayCycle.light;
+    const env: SegmentEnv = { night, time, sunL: light.sunL, sunR: light.sunR }; // rim light wg słońca/księżyca
     const sway = Math.sin(time * 0.9) * 1.2; // kołysanie liny nośnej
     world.prepare(camX);
 
     // 1. niebo, gwiazdy, słońce/księżyc
     {
       const sun = DayCycle.bodyPos(dayCycle.t);
-      drawSky(ctx, dayCycle.skyColors(), H, sun.x, sun.y, (1 - night) * (0.85 + 0.15 * dayCycle.warmth));
+      drawSky(ctx, dayCycle.skyColors(), H, sun.x, sun.y, (1 - night) * (0.45 + 0.55 * Math.max(dayCycle.golden, dayCycle.warmth)));
+      const moon = DayCycle.bodyPos(dayCycle.t + 0.5);
+      if (night > 0.05 && moon.up > -0.1) drawGlow(ctx, 'moon', moon.x, moon.y, night * 0.55); // księżycowa poświata
     }
     celestial.draw(ctx, dayCycle, time);
 
     // 2. krajobraz za pociągiem (przyciemniany nocą) + światła okien i lamp
     bctx.clearRect(0, 0, W, H);
-    farthest.draw(bctx, worldX);
-    far.draw(bctx, worldX);
-    clouds.draw(bctx, worldX);
-    near.draw(bctx, worldX);
-    hills.draw(bctx, worldX);
+    // udział światła z prawej: rano 0 (słońce z lewej), wieczorem 1
+    const right = light.sunR / Math.max(1e-3, light.sunL + light.sunR);
+    farthest.draw(bctx, worldX, right);
+    far.draw(bctx, worldX, right);
+    clouds.draw(bctx, worldX, right);
+    near.draw(bctx, worldX, right);
+    hills.draw(bctx, worldX, right);
     world.drawBack(bctx, env);
     drawPoles(bctx, camX);
     drawSignalPosts(bctx, camX, signals.posts);
     world.drawBed(bctx, env);
     drawTrack(bctx, camX);
-    applyTint(bctx, night, dayCycle.warmth);
+    applyTint(bctx, night, dayCycle.warmth, 0.72, dayCycle.golden);
     ctx.drawImage(backCanvas, 0, 0);
     world.drawLights(ctx, env);
     drawSignalLights(ctx, camX, signals.posts, night, time);
@@ -403,7 +408,7 @@ startLoop(
     birds.draw(fctx, camX, sway);
     world.drawFront(fctx, env);
     fore.draw(fctx, worldX);
-    applyTint(fctx, night, dayCycle.warmth, 0.5); // pociąg – bohater sceny – czytelny także nocą
+    applyTint(fctx, night, dayCycle.warmth, 0.5, dayCycle.golden); // pociąg – bohater sceny – czytelny także nocą
     ctx.drawImage(frontCanvas, 0, 0);
 
     // 4. światła pociągu i iskry (nie przyciemniane)

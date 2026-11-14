@@ -73,15 +73,19 @@ const FOREST = [PAL.forestDeep, PAL.forestShade, PAL.forestMid, PAL.forestBase, 
 const MEADOW = [PAL.meadowShade, PAL.meadowMid, PAL.meadowBase, PAL.meadowLight, PAL.meadowRim];
 
 export class ForestRidgeLayer {
-  private tile: HTMLCanvasElement;
+  /** Kafle: słońce z lewej i z prawej – przenikane wg kierunku światła (etap C). */
+  private tileL: HTMLCanvasElement;
+  private tileR: HTMLCanvasElement;
   private tileW: number;
 
   constructor(seed: number, private factor: number, s: RidgeStyle) {
     this.tileW = s.tile;
-    this.tile = ForestRidgeLayer.build(seed, s);
+    this.tileL = ForestRidgeLayer.build(seed, s, 1);
+    this.tileR = ForestRidgeLayer.build(seed, s, -1);
   }
 
-  private static build(seed: number, s: RidgeStyle): HTMLCanvasElement {
+  /** dir: 1 = słońce z lewej, -1 = z prawej (ten sam las, inne światło). */
+  private static build(seed: number, s: RidgeStyle, dir: 1 | -1): HTMLCanvasElement {
     const TW = s.tile;
     const rnd = mulberry32(seed * 97 + 13);
     const top = smoothProfile(mountainProfile(seed, TW, s), s.smooth);
@@ -98,7 +102,7 @@ export class ForestRidgeLayer {
       ditherIndex(Math.max(0, (y - s.baseY + 4) / 40) * (MIST - 1) * s.mist, MIST, x, y);
 
     // nasłonecznienie zbocza: wznosi się w prawo → patrzy w lewo, ku słońcu
-    const sun = (x: number) => Math.max(-1, Math.min(1, (at(x + 5) - at(x - 5)) / -6));
+    const sun = (x: number) => Math.max(-1, Math.min(1, (dir * (at(x + 5) - at(x - 5))) / -6));
 
     // polany / pola na zboczach: niżej na stoku, plamami wzdłuż grzbietu
     const ph1 = rnd() * 6.28;
@@ -153,22 +157,31 @@ export class ForestRidgeLayer {
       const l = sun(c.x);
       // mgiełka stała w obrębie jednej korony (bez szumu między odcieniami)
       const ramp = forest[mistAt(c.x, c.y)];
-      if (c.con) drawConifer(buf, c.x, c.y, c.r, l, ramp);
-      else drawCrown(buf, c.x, c.y, c.r, l, ramp);
+      if (c.con) drawConifer(buf, c.x, c.y, c.r, l, ramp, dir);
+      else drawCrown(buf, c.x, c.y, c.r, l, ramp, dir);
     }
     return buf.toCanvas();
   }
 
-  draw(ctx: CanvasRenderingContext2D, worldX: number): void {
+  /** right: udział światła z prawej 0..1 (0 = rano, 1 = wieczór). */
+  draw(ctx: CanvasRenderingContext2D, worldX: number, right = 0): void {
     const TW = this.tileW;
     const off = Math.floor((worldX * this.factor) % TW);
-    ctx.drawImage(this.tile, -off, 0);
-    if (TW - off < W) ctx.drawImage(this.tile, TW - off, 0);
+    const blit = (t: HTMLCanvasElement) => {
+      ctx.drawImage(t, -off, 0);
+      if (TW - off < W) ctx.drawImage(t, TW - off, 0);
+    };
+    if (right < 0.98) blit(this.tileL);
+    if (right > 0.02) {
+      ctx.globalAlpha = right >= 0.98 ? 1 : right;
+      blit(this.tileR);
+      ctx.globalAlpha = 1;
+    }
   }
 }
 
 /** Okrągła korona liściasta: blask od lewej-góry, chłodny cień od prawej-dołu. */
-function drawCrown(buf: PixBuf, cx: number, cy: number, r: number, l: number, ramp: number[]): void {
+function drawCrown(buf: PixBuf, cx: number, cy: number, r: number, l: number, ramp: number[], dir: number): void {
   const rx = r + 0.5;
   const ry = r * 0.85 + 0.5;
   for (let dy = -Math.ceil(ry); dy <= Math.ceil(ry); dy++) {
@@ -179,7 +192,7 @@ function drawCrown(buf: PixBuf, cx: number, cy: number, r: number, l: number, ra
       if (d > 1) continue;
       // poszarpany brzeg korony (listowie), bez dziur w środku
       if (d > 0.7 && bayer(cx + dx, cy + dy) > 0.82) continue;
-      const lit = -(nx * 0.7 + ny * 0.75); // -1..1, + = ku słońcu
+      const lit = -(nx * 0.7 * dir + ny * 0.75); // -1..1, + = ku słońcu
       let t = 2.0 + lit * 1.5 + l * 0.5;
       if (d > 0.6 && lit > 0.45) t += 1.1; // rim light na krawędzi od słońca
       if (d > 0.6 && lit < -0.2) t -= 1.0; // chłodny cień własny – korony się odcinają
@@ -192,14 +205,14 @@ function drawCrown(buf: PixBuf, cx: number, cy: number, r: number, l: number, ra
 }
 
 /** Świerk: trójkąt z piętrami gałęzi, oświetlona lewa krawędź. */
-function drawConifer(buf: PixBuf, cx: number, cy: number, r: number, l: number, ramp: number[]): void {
+function drawConifer(buf: PixBuf, cx: number, cy: number, r: number, l: number, ramp: number[], dir: number): void {
   const h = Math.round(r * 2.6);
   const top = cy - h + r;
   for (let i = 0; i <= h; i++) {
     const tier = (i % 3) / 3; // piętra gałęzi
     const half = Math.max(0, Math.round((i / h) * r * (0.8 + tier * 0.4)));
     for (let dx = -half; dx <= half; dx++) {
-      const u = half ? dx / half : 0;
+      const u = half ? (dx / half) * dir : 0;
       let t = 1.8 - u * 1.5 + l * 0.5 + (i % 3 === 0 ? 0.5 : 0);
       if (u < -0.6 && i > 1) t += 0.8; // rim od słońca
       const x = cx + dx;
