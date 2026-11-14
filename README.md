@@ -31,6 +31,7 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
 | Prędkość −/+ 10 km/h (0–120) | `←` / `→` | przyciski « » lub klik w pasek prędkości |
 | Dźwięk wł./wył. | `M` | przycisk głośnika |
 | Pełny ekran | `F` | przycisk ⛶ |
+| Jazda AUTO / RĘCZNA | `A` | klik w pole AUTO/RĘCZNA pod panelem |
 | Skok do poprzedniego / następnego punktu trasy | `[` / `]` | klik w ikonę na mapie trasy |
 | Przewijanie podglądu mapy | – | przeciągnij pasek mapy myszą lub palcem |
 
@@ -45,7 +46,7 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
   (zielone / pomarańczowe = 40 km/h / czerwone = stój). Sygnał losowany przy zbliżaniu się pociągu;
   czerwone po 5–15 s zmienia się na zielone lub pomarańczowe.
   - **AUTO** (domyślnie i po 3 min bez dotykania): pociąg sam zwalnia, staje przed czerwonym i rusza.
-  - **RĘCZNA** (po użyciu Spacji, `←`/`→` lub paska prędkości): pod panelem HUD podgląd najbliższego
+  - **RĘCZNA** (po użyciu Spacji, `←`/`→` lub paska prędkości; powrót do AUTO: `A` lub klik w pole trybu): pod panelem HUD podgląd najbliższego
     sygnału i odległość. Przejechanie czerwonego = alarm **RADIOSTOP**, hamowanie nagłe i komunikat
     „Przejechanie sygnału STÓJ!”.
   - Szybki przejazd z mapy omija semafory bez kar. Na mapie semafory to drobne znaczniki w kolorze sygnału.

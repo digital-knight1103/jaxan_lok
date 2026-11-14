@@ -191,6 +191,14 @@ function action(a: Action): void {
     case 'fullscreen':
       screen.toggleFullscreen();
       break;
+    case 'toggle-auto':
+      // ręczna → AUTO: pociąg rusza z prędkością marszową i sam respektuje semafory
+      state.autoDrive = !state.autoDrive;
+      if (state.autoDrive) {
+        state.running = true;
+        if (state.targetKmh === 0) state.targetKmh = START_KMH;
+      }
+      break;
     case 'poi-next':
     case 'poi-prev': {
       // w trakcie przejazdu liczymy od celu – można „przeskakiwać" kilka punktów

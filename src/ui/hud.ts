@@ -53,6 +53,8 @@ const PH = 60;
 const BTN = 13;
 /** Wysokość paska podglądu sygnału pod panelem. */
 const SIG_H = 12;
+/** Szerokość klikalnego pola trybu jazdy (prawa część paska). */
+const MODE_W = 52;
 const BTN_Y = PY + 31;
 const BTN_X0 = PX + 5;
 const BTN_STEP = 18;
@@ -77,6 +79,9 @@ export class Hud {
       const bx = BTN_X0 + i * BTN_STEP;
       if (x >= bx && x < bx + BTN && y >= BTN_Y && y < BTN_Y + BTN) return { action: BUTTONS[i].action };
     }
+    // pole trybu jazdy (AUTO / RĘCZNA) na pasku pod panelem = przełącznik
+    const sy = PY + PH + 2;
+    if (x >= PX + PW - MODE_W && x < PX + PW && y >= sy && y < sy + SIG_H) return { action: 'toggle-auto' };
     if (x >= BAR.x - 2 && x < BAR.x + BAR.w + 2 && y >= BAR.y - 5 && y < BAR.y + BAR.h + 5) {
       const v = ((x - BAR.x) / BAR.w) * MAX_KMH;
       return { setTarget: Math.max(0, Math.min(MAX_KMH, Math.round(v / SPEED_STEP_KMH) * SPEED_STEP_KMH)) };
@@ -128,8 +133,15 @@ export class Hud {
     ctx.fillRect(PX, sy, PW, SIG_H);
     ctx.fillStyle = PAL.locoMagenta;
     ctx.fillRect(PX, sy + SIG_H - 1, PW, 1);
+    // przełącznik trybu: przycisk z podpisem i skrótem A
     const mode = s.auto ? 'AUTO' : 'RĘCZNA';
-    drawText(ctx, mode, PX + PW - 5 - textWidth(mode), sy + 4, s.auto ? PAL.jaxanGreen : PAL.locoMagentaHi);
+    const mx = PX + PW - MODE_W;
+    ctx.fillStyle = s.auto ? PAL.jaxanGreenShade : PAL.hudButton;
+    ctx.fillRect(mx, sy + 1, MODE_W - 1, SIG_H - 3);
+    ctx.fillStyle = s.auto ? PAL.jaxanGreen : PAL.hudButtonHi;
+    ctx.fillRect(mx, sy + 1, MODE_W - 1, 1);
+    drawText(ctx, 'A', mx + 3, sy + 4, PAL.hudDim);
+    drawText(ctx, mode, PX + PW - 5 - textWidth(mode), sy + 4, s.auto ? PAL.hudText : PAL.locoMagentaHi);
     if (s.signal) {
       ctx.fillStyle = PAL.sigHead;
       ctx.fillRect(PX + 4, sy + 2, 7, 8);

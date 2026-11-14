@@ -4,10 +4,11 @@
 export type Action =
   | 'horn-down' | 'horn-up' | 'toggle-night' | 'toggle-run' | 'faster' | 'slower'
   | 'toggle-mute' | 'fullscreen' | 'weather' | 'cinema' | 'wagon-add' | 'wagon-remove'
-  | 'poi-prev' | 'poi-next';
+  | 'poi-prev' | 'poi-next' | 'toggle-auto';
 
 const KEYS: Record<string, Action> = {
   KeyH: 'horn-down',
+  KeyA: 'toggle-auto',
   KeyN: 'toggle-night',
   Space: 'toggle-run',
   ArrowRight: 'faster',
