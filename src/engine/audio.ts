@@ -23,6 +23,8 @@ export class AudioEngine {
   private noise: AudioBuffer | null = null;
   private jointDist = 0;
   private hornAt = 0;
+  private lastKmh = -1;
+  private lastSq = 0;
 
   /** Tworzy AudioContext (wymaga gestu użytkownika). Bezpieczne do wielokrotnego wołania. */
   unlock(): void {
@@ -92,7 +94,14 @@ export class AudioEngine {
     sg.gain.value = 0;
     const so = ctx.createOscillator();
     so.type = 'sine';
-    so.frequency.value = 2800;
+    so.frequency.value = 2600;
+    // wibrato pisku: LFO 23 Hz ±120 Hz (ustawione raz, bez zmian co klatkę)
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 23;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 120;
+    lfo.connect(lfoGain).connect(so.frequency);
+    lfo.start();
     so.connect(sg).connect(this.master);
     so.start();
     this.squeal = { osc: so, gain: sg };
@@ -117,14 +126,18 @@ export class AudioEngine {
     if (!ctx || this.muted || !this.motor || !this.squeal) return;
     const now = ctx.currentTime;
     const v = kmh / 120;
-    this.motor.osc.frequency.setTargetAtTime(38 + kmh * 0.9, now, 0.2);
-    this.motor.whine.frequency.setTargetAtTime(180 + kmh * 9, now, 0.2);
-    this.motor.filter.frequency.setTargetAtTime(250 + kmh * 12, now, 0.2);
-    this.motor.gain.gain.setTargetAtTime(kmh > 0.5 ? 0.05 + v * 0.07 : 0.015, now, 0.3);
-
+    // parametry zmieniamy tylko przy realnej zmianie (nie co klatkę) – oś czasu
+    // AudioParam nie puchnie przy wielogodzinnej pracy
     const sq = braking && kmh > 0.5 && kmh < 40 ? 0.025 * (1 - kmh / 40) + 0.01 : 0;
-    this.squeal.gain.gain.setTargetAtTime(sq, now, 0.1);
-    this.squeal.osc.frequency.setTargetAtTime(2600 + Math.sin(now * 23) * 120, now, 0.02);
+    if (Math.abs(kmh - this.lastKmh) >= 0.5 || (sq > 0) !== (this.lastSq > 0)) {
+      this.lastKmh = kmh;
+      this.lastSq = sq;
+      this.motor.osc.frequency.setTargetAtTime(38 + kmh * 0.9, now, 0.2);
+      this.motor.whine.frequency.setTargetAtTime(180 + kmh * 9, now, 0.2);
+      this.motor.filter.frequency.setTargetAtTime(250 + kmh * 12, now, 0.2);
+      this.motor.gain.gain.setTargetAtTime(kmh > 0.5 ? 0.05 + v * 0.07 : 0.015, now, 0.3);
+      this.squeal.gain.gain.setTargetAtTime(sq, now, 0.1);
+    }
 
     // stukot: dwa uderzenia na złącze (dwie osie wózka), tempo z prędkości
     const pxs = kmh * PX_PER_KMH;
