@@ -368,7 +368,7 @@ startLoop(
   () => {
     const camX = Math.floor(worldX);
     const night = dayCycle.night;
-    const env: SegmentEnv = { night, time };
+    const env: SegmentEnv = { night, time, sunL: 1, sunR: 0 }; // kierunek światła – etap C
     const sway = Math.sin(time * 0.9) * 1.2; // kołysanie liny nośnej
     world.prepare(camX);
 
@@ -401,7 +401,7 @@ startLoop(
     consist.draw(fctx);
     drawWires(fctx, camX, sway);
     birds.draw(fctx, camX, sway);
-    world.drawFront(fctx);
+    world.drawFront(fctx, env);
     fore.draw(fctx, worldX);
     applyTint(fctx, night, dayCycle.warmth, 0.5); // pociąg – bohater sceny – czytelny także nocą
     ctx.drawImage(frontCanvas, 0, 0);

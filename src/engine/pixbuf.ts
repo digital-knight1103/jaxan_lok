@@ -76,3 +76,31 @@ export class PixBuf {
     return c;
   }
 }
+
+/**
+ * Szybkie malowanie piksel po pikselu na fragmencie canvasu: pobiera ImageData
+ * prostokąta, wywołuje fn(x, y) (współrzędne canvasu) → kolor '#rrggbb' albo null
+ * (piksel bez zmian), zapisuje z powrotem. Zamiast tysięcy fillRect 1×1.
+ */
+export function paint(
+  ctx: CanvasRenderingContext2D, x0: number, y0: number, w: number, h: number,
+  fn: (x: number, y: number) => string | null,
+): void {
+  x0 = Math.round(x0);
+  y0 = Math.round(y0);
+  const cx0 = Math.max(0, x0);
+  const cy0 = Math.max(0, y0);
+  const cx1 = Math.min(ctx.canvas.width, x0 + w);
+  const cy1 = Math.min(ctx.canvas.height, y0 + h);
+  if (cx1 <= cx0 || cy1 <= cy0) return;
+  const img = ctx.getImageData(cx0, cy0, cx1 - cx0, cy1 - cy0);
+  const px = new Uint32Array(img.data.buffer);
+  const iw = cx1 - cx0;
+  for (let y = cy0; y < cy1; y++) {
+    for (let x = cx0; x < cx1; x++) {
+      const c = fn(x, y);
+      if (c !== null) px[(y - cy0) * iw + (x - cx0)] = rgba(c);
+    }
+  }
+  ctx.putImageData(img, cx0, cy0);
+}

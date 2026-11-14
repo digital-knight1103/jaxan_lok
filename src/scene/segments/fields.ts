@@ -8,6 +8,11 @@ import { mulberry32 } from '../../engine/rng';
 import { cached, makeSprite, rect } from '../../engine/sprite';
 import type { SegmentDef } from './types';
 import { GROUND_Y, drawBackStrip, drawGround, plantBackItem } from './common';
+import { bayer, paint } from '../../engine/pixbuf';
+import { drawFoliage } from '../../sprites/blob';
+import { getPoplar, getWillow, getShrine, POPLAR_VARIANTS, WILLOW_VARIANTS } from '../../sprites/village';
+
+const HEDGE = [PAL.foliageGlint, PAL.foliageHi, PAL.foliageMid, PAL.foliage, PAL.foliageShade, PAL.foliageDeep] as const;
 
 const WIDTH = 640;
 /** Szerokość trawiastej miedzy na brzegach segmentu. */
@@ -73,14 +78,17 @@ function drawMidFields(ctx: CanvasRenderingContext2D, l: Layout, rnd: () => numb
   for (const s of l.stripes) {
     for (const p of s.plots) {
       const [hi, base, shade] = CROP[p.crop];
-      for (let y = s.y0; y < s.y1; y++) {
-        // rzędy upraw: naprzemienne odcienie, jaśniejsza górna krawędź pasa
-        const c = y === s.y0 ? hi : (y - s.y0) % 2 === 0 ? base : shade;
-        rect(ctx, p.x0, y, p.x1 - p.x0, 1, c);
-      }
-      for (let k = 0; k < ((p.x1 - p.x0) * (s.y1 - s.y0)) / 9; k++) {
-        rect(ctx, p.x0 + Math.floor(rnd() * (p.x1 - p.x0)), s.y0 + Math.floor(rnd() * (s.y1 - s.y0)), 1, 1, rnd() < 0.5 ? hi : shade);
-      }
+      // styl2: bruzdy (rzędy upraw) z ditheringiem zamiast twardych pasów; łagodna
+      // fala jasności wzdłuż pola – światło ślizga się po łanie
+      const ph = rnd() * 6.28;
+      paint(ctx, p.x0, s.y0, p.x1 - p.x0, s.y1 - s.y0, (x, y) => {
+        const furrow = (y - s.y0) % 2 === 1;
+        const glow = 0.5 + 0.5 * Math.sin(x * 0.021 + ph) * Math.sin(x * 0.007 + y * 0.3);
+        if (y === s.y0) return glow > 0.35 || bayer(x, y) < 0.5 ? hi : base;
+        if (furrow) return bayer(x, y) < 0.75 ? shade : base;
+        if (glow > 0.72 && bayer(x, y) < (glow - 0.72) * 3) return hi;
+        return base;
+      });
       if (p.crop === 'rapeseed') {
         for (let k = 0; k < (p.x1 - p.x0) / 3; k++) rect(ctx, p.x0 + Math.floor(rnd() * (p.x1 - p.x0)), s.y0 + Math.floor(rnd() * (s.y1 - s.y0)), 1, 1, PAL.wheatEar);
       }
@@ -100,10 +108,11 @@ function drawMidFields(ctx: CanvasRenderingContext2D, l: Layout, rnd: () => numb
     // miedza wzdłuż pasa (przerywana)
     for (let x = 0; x < WIDTH; x++) if (rnd() < 0.55) rect(ctx, x, s.y1 - 1, 1, 1, PAL.grassMid);
   }
-  // górna krawędź pól: żywopłot / zarośla (miękkie przejście do wzgórz)
-  for (let x = 0; x < WIDTH; x++) {
-    const h = 1 + Math.floor(rnd() * 2) + (Math.sin(x * 0.05) > 0.7 ? 2 : 0);
-    rect(ctx, x, MID_TOP - h, 1, h, rnd() < 0.5 ? PAL.foliageShade : PAL.foliage);
+  // górna krawędź pól: żywopłot z pojedynczych koron (rim light od słońca)
+  for (let x = 0; x < WIDTH; x++) rect(ctx, x, MID_TOP - 2, 1, 2, PAL.foliageShade);
+  for (let x = 4; x < WIDTH - 4; x += 5 + Math.floor(rnd() * 6)) {
+    const r = Math.sin(x * 0.05) > 0.6 ? 4 + rnd() * 2 : 2.5 + rnd() * 1.5;
+    drawFoliage(ctx, x, MID_TOP - r * 0.6, r * 1.1, r, HEDGE, rnd, [1.2, 2], 1.9);
   }
 }
 
@@ -166,8 +175,22 @@ export const fields: SegmentDef = {
       const s = l.stripes[1 + Math.floor(rnd() * 3)];
       plantBackItem(back, 60 + Math.floor(rnd() * (WIDTH - 120)), rnd() < 0.8 ? 'tree' : 'pine', rnd, s.y1 - TRACK_Y);
     }
-    plantBackItem(back, 12, rnd() < 0.5 ? 'tree' : 'bush', rnd, 2);
+    // miedze: topole w rzędzie albo wierzby głowiaste; czasem kapliczka przy drodze polnej
+    const rowY = l.stripes[1].y1;
+    if (rnd() < 0.6) {
+      const px0 = 80 + Math.floor(rnd() * (WIDTH - 220));
+      for (let k = 0; k < 3 + Math.floor(rnd() * 4); k++) {
+        const s = getPoplar(Math.floor(rnd() * POPLAR_VARIANTS));
+        back.drawImage(s, px0 + k * (9 + Math.floor(rnd() * 4)), rowY - s.height);
+      }
+    }
+    const wil = getWillow(Math.floor(rnd() * WILLOW_VARIANTS));
+    back.drawImage(wil, 4, TRACK_Y + 2 - wil.height);
     plantBackItem(back, WIDTH - 12, rnd() < 0.5 ? 'tree' : 'bush', rnd, 2);
+    if (rnd() < 0.35) {
+      const sh = getShrine();
+      back.drawImage(sh, 120 + Math.floor(rnd() * (WIDTH - 240)), TRACK_Y + 1 - sh.height);
+    }
     drawBackStrip(back, 0, WIDTH, rnd);
 
     // pierwszy plan: miedza z trawą, pod spodem złote podłoże łanu (luki między źdźbłami)

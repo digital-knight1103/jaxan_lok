@@ -1,6 +1,7 @@
 // Wspólne elementy segmentów: zielony stok pod torem, pas trawy za torem, krzaki.
 import { H, TRACK_Y } from '../../config';
 import { PAL } from '../../palette';
+import { rgba } from '../../engine/pixbuf';
 import { getBush, getPine, getTree, BUSH_VARIANTS, PINE_VARIANTS, TREE_VARIANTS } from '../../sprites/nature';
 
 /** Pierwszy wiersz gruntu pod tłuczniem. */
@@ -25,6 +26,21 @@ export function drawGround(
     Math.round((3 + b * 2) * Math.sin((Math.PI * k1 * x) / segW + b) * Math.sin((Math.PI * x) / segW) +
       2 * Math.sin((Math.PI * k2 * x) / segW) * Math.sin((Math.PI * x) / segW));
   const RAMP: string[] = [PAL.grassGlint, PAL.grassHi, PAL.grass, PAL.grassMid, PAL.grassDark, PAL.grassDeep, PAL.frontDeep];
+  const RC = RAMP.map(rgba);
+  // całość na buforze pikseli (getImageData raz) – zamiast dziesiątek tysięcy fillRect
+  const bx0 = Math.max(0, x0 - 1);
+  const bx1 = Math.min(ctx.canvas.width, x1 + 3);
+  const by0 = GROUND_Y - 8;
+  const bw = bx1 - bx0;
+  const bh = H - by0;
+  if (bw <= 0) return;
+  const img = ctx.getImageData(bx0, by0, bw, bh);
+  const buf = new Uint32Array(img.data.buffer);
+  const set = (x: number, y: number, c: number) => {
+    const ix = x - bx0;
+    const iy = y - by0;
+    if (ix >= 0 && iy >= 0 && ix < bw && iy < bh) buf[iy * bw + ix] = c;
+  };
   // 1. pasy kolorów; na granicach 2 wiersze ditheringu (miękkie przejście)
   const spans: { from: number; to: number; ri: number }[][] = [];
   for (let x = x0; x < x1; x++) {
@@ -36,41 +52,35 @@ export function drawGround(
       const from = Math.max(top, GROUND_Y + bands[b][0] + (b === 0 ? 0 : wave(x, b)));
       const to = b + 1 < bands.length ? GROUND_Y + bands[b + 1][0] + wave(x, b + 1) : H;
       if (to <= from) continue;
-      ctx.fillStyle = bands[b][1];
-      ctx.fillRect(x, from, 1, to - from);
+      const ri = RAMP.indexOf(bands[b][1]);
+      for (let y = from; y < to; y++) set(x, y, RC[ri]);
       if (b > 0 && from > top) {
-        ctx.fillStyle = bands[b - 1][1];
-        for (let y = from; y < Math.min(to, from + 3); y++) if ((x + y) % 2 === 0 && y - from < 2 + (x % 2)) ctx.fillRect(x, y, 1, 1);
+        const prev = RC[RAMP.indexOf(bands[b - 1][1])];
+        for (let y = from; y < Math.min(to, from + 3); y++) if ((x + y) % 2 === 0 && y - from < 2 + (x % 2)) set(x, y, prev);
       }
-      col.push({ from, to, ri: RAMP.indexOf(bands[b][1]) });
+      col.push({ from, to, ri });
     }
   }
   // 2. źdźbła: skośne kreski w górę-w prawo, jaśniejsze o ton, z refleksem na
-  //    czubku i cieniem u nasady – trawa „pod wiatr" jak na styl.jpg
+  //    czubku i cieniem u nasady – trawa „pod wiatr"
   for (let i = 0; i < spans.length; i++) {
     const x = x0 + i;
-    for (const s of spans[i]) {
-      const n = Math.floor((s.to - s.from) / 6);
+    for (const sp of spans[i]) {
+      const n = Math.floor((sp.to - sp.from) / 6);
       for (let k = 0; k < n; k++) {
-        const y = s.from + 2 + Math.floor(rnd() * Math.max(1, s.to - s.from - 2));
+        const y = sp.from + 2 + Math.floor(rnd() * Math.max(1, sp.to - sp.from - 2));
         const hgt = 2 + Math.floor(rnd() * 3);
-        ctx.fillStyle = RAMP[Math.max(0, s.ri - 1)];
-        for (let j = 0; j < hgt; j++) ctx.fillRect(x + (j >> 1), y - j, 1, 1);
-        if (s.ri <= 3 && rnd() < 0.35) {
-          ctx.fillStyle = RAMP[Math.max(0, s.ri - 2)];
-          ctx.fillRect(x + ((hgt - 1) >> 1), y - hgt + 1, 1, 1);
-        }
-        ctx.fillStyle = RAMP[Math.min(RAMP.length - 1, s.ri + 1)];
-        ctx.fillRect(x - 1, y + 1, 1, 1);
+        const c = RC[Math.max(0, sp.ri - 1)];
+        for (let j = 0; j < hgt; j++) set(x + (j >> 1), y - j, c);
+        if (sp.ri <= 3 && rnd() < 0.35) set(x + ((hgt - 1) >> 1), y - hgt + 1, RC[Math.max(0, sp.ri - 2)]);
+        set(x - 1, y + 1, RC[Math.min(RC.length - 1, sp.ri + 1)]);
       }
     }
-    // żółtozielone refleksy na samej krawędzi stoku
+    // żółtozielone refleksy na samej krawędzi stoku (rim light)
     const top = topAt(x);
-    if (top < H && rnd() < 0.55) {
-      ctx.fillStyle = rnd() < 0.3 ? PAL.grassGlint : PAL.grassHi;
-      ctx.fillRect(x, top, 1, 1);
-    }
+    if (top < H && rnd() < 0.55) set(x, top, rnd() < 0.3 ? RC[0] : RC[1]);
   }
+  ctx.putImageData(img, bx0, by0);
 }
 
 /** Krzaki rozsiane po stoku. */

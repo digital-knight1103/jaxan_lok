@@ -10,6 +10,13 @@ import { drawText, textWidth } from '../../engine/font';
 import type { SegmentDef } from './types';
 import { drawBackStrip, drawGround, plantBackItem, scatterBushes } from './common';
 import { drawLampLights, drawNameBoard, drawPlatform, PLATFORM_TOP } from './stationkit';
+import { shadeWall, skyWindow, type Ramp5 } from './shade';
+import { ditherEdge, paint } from '../../engine/pixbuf';
+
+const SAND: Ramp5 = [PAL.sandGlint, PAL.sandHi, PAL.sand, PAL.sandShade, PAL.sandDark];
+const STUCCO: Ramp5 = [PAL.stuccoGlint, PAL.stuccoHi, PAL.stucco, PAL.stuccoShade, PAL.stuccoDeep];
+const TILE: Ramp5 = [PAL.roofRedGlint, PAL.roofRedHi, PAL.roofRed, PAL.roofRedShade, PAL.roofRedDeep];
+const STEEL: Ramp5 = [PAL.plantGlint, PAL.plantHi, PAL.plant, PAL.plantShade, PAL.plantDark];
 
 const WIDTH = 1600;
 export const SOKOLKA = 'SOKÓŁKA';
@@ -57,19 +64,28 @@ function ridgeTop(x: number): number {
 }
 
 function drawRidge(ctx: CanvasRenderingContext2D, rnd: () => number): void {
+  // ściana piasku (5 tonów): warstwy osadów, u góry nawis darni rzuca chłodny cień,
+  // ku dołowi ściana jaśnieje od odbitego światła; zbocza ku słońcu jaśniejsze
+  const tops: number[] = [];
+  const slopes: number[] = [];
+  for (let x = PIT_FROM; x < WIDTH; x++) {
+    tops.push(ridgeTop(x));
+    slopes.push(Math.max(-1, Math.min(1, (ridgeTop(x + 4) - ridgeTop(x - 4)) / -4)));
+  }
+  const minTop = Math.min(...tops);
+  paint(ctx, PIT_FROM, minTop, WIDTH - PIT_FROM, TRACK_Y - minTop, (x, y) => {
+    const top = tops[x - PIT_FROM];
+    if (top >= TRACK_Y - 1 || y < top) return null;
+    const d = y - top;
+    if (d < 2) return d === 0 ? PAL.grassHi : PAL.grassMid; // darń na krawędzi
+    if (d < 3) return PAL.sandDark;
+    const band = Math.floor((y + Math.sin(x * 0.02) * 3) / 7) % 4;
+    const t = 2 - slopes[x - PIT_FROM] * 0.6 + (band === 1 ? 0.8 : band === 3 ? -0.7 : 0) + Math.max(0, 1.4 - d * 0.18);
+    return SAND[ditherEdge(t, 5, x, y)];
+  });
   for (let x = PIT_FROM; x < WIDTH; x++) {
     const top = ridgeTop(x);
     if (top >= TRACK_Y - 1) continue;
-    // ściana piasku: jasne i ciemniejsze warstwy osadów
-    for (let y = top; y < TRACK_Y; y++) {
-      const d = y - top;
-      const band = Math.floor((y + Math.sin(x * 0.02) * 3) / 7) % 4;
-      let c: string = band === 1 ? PAL.sandShade : band === 3 ? PAL.sandHi : PAL.sand;
-      if (d < 2) c = PAL.grassMid; // darń na krawędzi
-      else if (d < 4) c = PAL.sandDark;
-      ctx.fillStyle = c;
-      ctx.fillRect(x, y, 1, 1);
-    }
     // żłobienia erozyjne spływające po ścianie
     if (rnd() < 0.05) {
       const len = 6 + Math.floor(rnd() * 20);
@@ -162,8 +178,7 @@ function drawPlant(ctx: CanvasRenderingContext2D): void {
   // kosz zasypowy na górze
   for (let r = 0; r < 12; r++) rect(ctx, x0 + 2 + (r >> 1), top + r, 26 - r, 1, r === 0 ? PAL.machine : PAL.machineShade);
   // korpus przesiewacza
-  rect(ctx, x0, top + 12, x1 - x0, 26, PAL.plant);
-  rect(ctx, x0, top + 12, x1 - x0, 1, PAL.plantHi);
+  shadeWall(ctx, x0, top + 12, x1 - x0, 26, STEEL, 0);
   // trzy pokłady sit (pochylone, żółte ramy, siatka)
   for (let d = 0; d < 3; d++) {
     const y = top + 16 + d * 7;
@@ -194,23 +209,36 @@ function drawHopper(ctx: CanvasRenderingContext2D): void {
 }
 
 function drawBuilding(ctx: CanvasRenderingContext2D): void {
-  rect(ctx, B0, B_TOP, B1 - B0, PLATFORM_TOP - B_TOP, PAL.stucco);
-  rect(ctx, B1 - 3, B_TOP, 3, PLATFORM_TOP - B_TOP, PAL.stuccoShade);
-  rect(ctx, B0, PLATFORM_TOP - 8, B1 - B0, 8, PAL.stuccoShade); // cokół
+  shadeWall(ctx, B0, B_TOP, B1 - B0, PLATFORM_TOP - B_TOP, STUCCO, 3);
+  shadeWall(ctx, B0, PLATFORM_TOP - 8, B1 - B0, 8, [PAL.stucco, PAL.stuccoShade, PAL.stuccoShade, PAL.stuccoDeep, PAL.stuccoDeep], 0); // cokół
   // dach dwuspadowy z czerwonej dachówki + lukarna
-  for (let y = 0; y < 14; y++) rect(ctx, B0 - 4 + y, B_TOP - 1 - y, B1 - B0 + 8 - 2 * y, 1, y === 0 ? PAL.roofRedHi : y % 3 === 0 ? PAL.roofRedHi : PAL.roofRed);
+  // dachówka: rzędy z „falą” przesuniętą co rząd, lewa krawędź w słońcu, prawa w cieniu
+  for (let y = 0; y < 14; y++) {
+    const x0 = B0 - 4 + y;
+    const w = B1 - B0 + 8 - 2 * y;
+    const row = y % 3;
+    rect(ctx, x0, B_TOP - 1 - y, w, 1, TILE[y === 0 ? 3 : row === 0 ? 1 : row === 1 ? 2 : 3]);
+    for (let i = (y % 2) * 2; i < w; i += 4) rect(ctx, x0 + i, B_TOP - 1 - y, 1, 1, TILE[row === 0 ? 0 : 3]);
+    rect(ctx, x0, B_TOP - 1 - y, 1, 1, TILE[0]);
+    rect(ctx, x0 + w - 1, B_TOP - 1 - y, 1, 1, TILE[4]);
+  }
   const mid = (B0 + B1) >> 1;
-  rect(ctx, mid - 8, B_TOP - 20, 16, 10, PAL.stucco);
-  for (let y = 0; y < 8; y++) rect(ctx, mid - 10 + y, B_TOP - 21 - y, 20 - 2 * y, 1, PAL.roofRed);
-  rect(ctx, mid - 3, B_TOP - 18, 6, 6, PAL.windowDay);
-  rect(ctx, B0 + 18, B_TOP - 18, 4, 8, PAL.brickShade); // komin
+  shadeWall(ctx, mid - 8, B_TOP - 20, 16, 10, STUCCO, 1);
+  for (let y = 0; y < 8; y++) {
+    rect(ctx, mid - 10 + y, B_TOP - 21 - y, 20 - 2 * y, 1, TILE[y % 2 ? 2 : 1]);
+    rect(ctx, mid - 10 + y, B_TOP - 21 - y, 1, 1, TILE[0]);
+    rect(ctx, mid + 9 - y, B_TOP - 21 - y, 1, 1, TILE[4]);
+  }
+  skyWindow(ctx, mid - 3, B_TOP - 18, 6, 6, PAL.glassHi, PAL.windowDay, PAL.roofDeep);
+  shadeWall(ctx, B0 + 18, B_TOP - 18, 4, 8, [PAL.brickGlint, PAL.brickHi, PAL.brick, PAL.brickShade, PAL.brickDeep], 0); // komin
   // nazwa na elewacji
   drawText(ctx, SOKOLKA, mid - (textWidth(SOKOLKA) >> 1), B_TOP + 4, PAL.roof);
   // okna z łukowym nadprożem i drzwi
   for (const w of WINDOWS) {
     rect(ctx, w.x - 1, w.y - 2, 8, 15, PAL.stuccoShade);
-    rect(ctx, w.x, w.y, 6, 12, PAL.windowDay);
-    rect(ctx, w.x + 1, w.y - 1, 4, 1, PAL.windowDay);
+    skyWindow(ctx, w.x, w.y, 6, 12, PAL.glassHi, PAL.windowDay, PAL.roofDeep);
+    rect(ctx, w.x + 1, w.y - 1, 4, 1, PAL.glassHi);
+    rect(ctx, w.x - 1, w.y + 13, 8, 1, PAL.stuccoDeep); // cień pod parapetem
     rect(ctx, w.x + 3, w.y, 1, 12, PAL.stucco);
   }
   rect(ctx, mid - 6, TRACK_Y - 26, 12, 21, PAL.stuccoShade);

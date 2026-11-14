@@ -17,6 +17,9 @@ export interface SegmentEnv {
   night: number;
   /** Czas sceny w sekundach (animacje). */
   time: number;
+  /** Krycie nakładek światła: słońce z lewej / z prawej (0..1). */
+  sunL: number;
+  sunR: number;
 }
 
 export interface SegmentDef {

@@ -9,6 +9,16 @@ import { cached, makeSprite, rect } from '../../engine/sprite';
 import type { SegmentDef } from './types';
 import { drawBackStrip, drawGround, plantBackItem, scatterBushes } from './common';
 import { drawLampLights, drawNameBoard, drawPlatform } from './stationkit';
+import { shadeWall, type Ramp5 } from './shade';
+import { ditherEdge, paint } from '../../engine/pixbuf';
+
+const RAMPS: Record<Kind, Ramp5> = {
+  glass: [PAL.towerGlassGlint, PAL.towerGlassHi, PAL.towerGlass, PAL.towerGlassShade, PAL.towerGlassDeep],
+  concrete: [PAL.towerConcreteGlint, PAL.towerConcreteHi, PAL.towerConcrete, PAL.towerConcreteShade, PAL.towerConcreteDeep],
+  // dalekie bloki: perspektywa powietrzna – mały kontrast, kolor powietrza
+  haze: [PAL.hazeFar, PAL.cityHaze, PAL.cityHaze, PAL.cityHazeShade, PAL.cityHazeShade],
+};
+const PKIN: Ramp5 = [PAL.pkinGlint, PAL.pkinHi, PAL.pkin, PAL.pkinShade, PAL.pkinDark];
 
 const WIDTH = 1500;
 export const WARSZAWA = 'WARSZAWA';
@@ -56,14 +66,23 @@ const COLORS: Record<Kind, [string, string, string, string]> = {
 };
 
 function drawTower(ctx: CanvasRenderingContext2D, t: Tower): void {
-  const [wall, hi, shade, floor] = COLORS[t.kind];
+  const floor = COLORS[t.kind][3];
   const top = BASE - t.h;
-  for (let y = top; y < BASE; y++) {
+  const R = RAMPS[t.kind];
+  paint(ctx, t.x, top, t.w, t.h, (x, y) => {
     const [a, b] = rowSpan(t, y - top);
-    rect(ctx, a, y, b - a, 1, wall);
-    rect(ctx, a, y, 2, 1, hi);
-    rect(ctx, b - 3, y, 3, 1, shade);
-    if ((y - top) % 4 === 3 && t.kind !== 'haze') rect(ctx, a + 2, y, b - a - 5, 1, floor); // piętra
+    if (x < a || x >= b) return null;
+    const v = (y - top) / t.h; // szkło odbija jaśniejsze niebo u góry
+    const u = (x - a) / Math.max(1, b - a - 1);
+    let tt = 1.4 + u * 2.2 + (t.kind === 'glass' ? v * 0.8 - 0.3 : 0);
+    if (x === a) tt = 0; // rim light od słońca
+    return R[ditherEdge(tt, 5, x, y)];
+  });
+  if (t.kind !== 'haze') {
+    for (let y = top + 3; y < BASE; y += 4) {
+      const [a, b] = rowSpan(t, y - top);
+      rect(ctx, a + 2, y, b - a - 5, 1, floor); // piętra
+    }
   }
   if (t.kind === 'glass') {
     // pionowe słupki fasady i ukośny refleks nieba
@@ -80,9 +99,8 @@ function drawPkin(ctx: CanvasRenderingContext2D): void {
   const cx = PKIN_CX;
   for (const [half, h] of PKIN_STEPS) {
     const top = BASE - h;
-    rect(ctx, cx - half, top, half * 2, h, PAL.pkin);
-    rect(ctx, cx + half - 4, top, 4, h, PAL.pkinShade); // cień po prawej
-    rect(ctx, cx - half, top, half * 2, 1, PAL.pkinHi); // gzyms
+    shadeWall(ctx, cx - half, top, half * 2, h, PKIN, 2);
+    rect(ctx, cx - half, top, half * 2, 1, PAL.pkinGlint); // gzyms w słońcu
     // attyki z sterczynami na narożnikach
     for (const px of [cx - half, cx + half - 2]) rect(ctx, px, top - 4, 2, 4, PAL.pkin);
     for (let x = cx - half + 4; x < cx + half - 4; x += 6) rect(ctx, x, top - 2, 2, 2, PAL.pkinHi);

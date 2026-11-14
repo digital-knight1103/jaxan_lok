@@ -5,6 +5,10 @@ import { PAL } from '../../palette';
 import { mulberry32 } from '../../engine/rng';
 import type { SegmentDef } from './types';
 import { GROUND_Y, drawBackStrip, drawGround, scatterBushes } from './common';
+import { ditherEdge } from '../../engine/pixbuf';
+
+/** Filary: 5 tonów żelaza/kamienia, blask z lewej, chłodny cień z prawej. */
+const PIER = [PAL.bridgeRivet, PAL.bridgeHi, PAL.bridge, PAL.bridgeShade, PAL.bridgeShadow] as const;
 
 const WIDTH = 480;
 const ABUT = 56; // przyczółek: grunt schodzi w dolinę
@@ -93,12 +97,14 @@ export const bridge: SegmentDef = {
       const px = Math.round(SPAN_FROM + i * span - PIER_W / 2);
       for (let y = DECK_BOTTOM; y < H; y++) {
         const widen = y > H - 30 ? Math.floor((y - (H - 30)) / 8) : 0;
-        bed.fillStyle = PAL.bridge;
-        bed.fillRect(px - widen, y, PIER_W + 2 * widen, 1);
-        bed.fillStyle = PAL.bridgeHi;
-        bed.fillRect(px - widen, y, 1, 1);
-        bed.fillStyle = PAL.bridgeShade;
-        bed.fillRect(px + PIER_W + widen - 2, y, 2, 1);
+        const pw = PIER_W + 2 * widen;
+        for (let k = 0; k < pw; k++) {
+          const u = k / (pw - 1);
+          // cień pomostu u góry filara, niżej jaśniej (odbite światło doliny)
+          const t = k === 0 ? 0.6 : 1.4 + u * 2.4 + Math.max(0, 1 - (y - DECK_BOTTOM) / 20);
+          bed.fillStyle = PIER[ditherEdge(t, 5, px - widen + k, y)];
+          bed.fillRect(px - widen + k, y, 1, 1);
+        }
       }
       // głowica filara i poziome spoiny co 12 px
       bed.fillStyle = PAL.bridgeHi;

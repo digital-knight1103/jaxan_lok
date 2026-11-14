@@ -3,9 +3,15 @@
 import { TRACK_Y } from '../../config';
 import { PAL } from '../../palette';
 import { mulberry32 } from '../../engine/rng';
-import { rect } from '../../engine/sprite';
+import { rect, cached, makeSprite } from '../../engine/sprite';
 import { drawText, textWidth } from '../../engine/font';
-import { drawBlob, type Circle } from '../../sprites/blob';
+import { drawFoliage } from '../../sprites/blob';
+import { shadeWall, skyWindow, type Ramp5 } from './shade';
+
+const BRICK: Ramp5 = [PAL.brickGlint, PAL.brickHi, PAL.brick, PAL.brickShade, PAL.brickDeep];
+const PALACE: Ramp5 = [PAL.palaceGlint, PAL.palaceHi, PAL.palace, PAL.palaceShade, PAL.palaceDeep];
+const SLATE: Ramp5 = [PAL.roofGlint, PAL.roofHi, PAL.roof, PAL.roofShade, PAL.roofDeep];
+const FOLIAGE = [PAL.foliageGlint, PAL.foliageHi, PAL.foliageMid, PAL.foliage, PAL.foliageShade, PAL.foliageDeep] as const;
 import type { SegmentDef } from './types';
 import { disc, drawBackStrip, drawGround, plantBackItem, scatterBushes } from './common';
 
@@ -41,36 +47,53 @@ const palaceWindows = (): { x: number; y: number }[] => {
 };
 
 function brickWall(ctx: CanvasRenderingContext2D, x0: number, y0: number, w: number, h: number, rnd: () => number): void {
-  rect(ctx, x0, y0, w, h, PAL.brick);
+  shadeWall(ctx, x0, y0, w, h, BRICK, 3);
+  // spoiny: co 3 wiersze, cegły przesunięte; pojedyncze jaśniejsze cegły (zróżnicowanie)
   for (let y = y0 + 2; y < y0 + h; y += 3) {
-    for (let x = x0 + ((y >> 1) % 2) * 2; x < x0 + w; x += 4 + Math.floor(rnd() * 2)) {
+    for (let x = x0 + 1 + ((y >> 1) % 2) * 2; x < x0 + w - 1; x += 4 + Math.floor(rnd() * 2)) {
       rect(ctx, x, y, 1, 1, PAL.brickShade);
+      if (rnd() < 0.12) rect(ctx, x + 1, y - 1, 2, 1, PAL.brickHi);
     }
   }
-  rect(ctx, x0 + w - 2, y0, 2, h, PAL.brickShade);
-  rect(ctx, x0, y0, 1, h, PAL.brickHi);
 }
 
-function drawPalace(ctx: CanvasRenderingContext2D, rnd: () => number): void {
+function drawPalace(ctx: CanvasRenderingContext2D): void {
   // wzgórze pod pałacem
-  const hill: Circle[] = [];
-  for (let i = 0; i < 6; i++) hill.push({ x: 580 + i * 40, y: TRACK_Y - 40 + rnd() * 10, r: 30 + rnd() * 14 });
-  drawBlob(ctx, hill, [PAL.foliageHi, PAL.foliage, PAL.foliageShade, PAL.foliageDeep], rnd, 0, 0, undefined, 0.5);
+  // wzgórze parkowe: gęste korony drzew rzędami od góry (dolne nachodzą na górne)
+  // (stały wzór, sprite cache'owany – drogi w rysowaniu, a Kamieniec zawsze ten sam)
+  const PARK_X = 560;
+  const park = cached('kamieniec-park', () =>
+    makeSprite(WIDTH - PARK_X, 80, (c) => {
+      const prnd = mulberry32(0x9a7c);
+      for (let row = 0; row < 7; row++) {
+        const y = 14 + row * 9;
+        for (let x = 12 + (row & 1) * 7; x < WIDTH - PARK_X; x += 12 + Math.floor(prnd() * 6)) {
+          const r = 6 + prnd() * 3;
+          drawFoliage(c, x, y + Math.sin((x + PARK_X) * 0.05) * 3, r * 1.15, r, FOLIAGE, prnd, [2, 3.5], 2.3 + row * 0.15);
+        }
+      }
+    }),
+  );
+  ctx.drawImage(park, PARK_X, TRACK_Y - 80);
+
 
   // korpus z blankami
-  rect(ctx, P0, P_TOP, P1 - P0, P_BOTTOM - P_TOP, PAL.palace);
-  rect(ctx, P1 - 6, P_TOP, 6, P_BOTTOM - P_TOP, PAL.palaceShade);
+  shadeWall(ctx, P0, P_TOP, P1 - P0, P_BOTTOM - P_TOP, PALACE, 0);
   for (let x = P0; x < P1; x += 4) rect(ctx, x, P_TOP - 3, 2, 3, PAL.palace);
   rect(ctx, P0, P_TOP + 18, P1 - P0, 1, PAL.palaceShade); // gzyms
-  for (const w of palaceWindows()) rect(ctx, w.x, w.y, 2, 6, PAL.palaceShade);
+  for (const w of palaceWindows()) {
+    rect(ctx, w.x, w.y, 2, 6, PAL.palaceDeep);
+    rect(ctx, w.x, w.y, 1, 2, PAL.towerGlassHi); // odbicie nieba
+  }
   // wieże neogotyckie ze strzelistymi hełmami
   const tower = (cx: number, w: number, top: number, spire: number) => {
-    rect(ctx, cx - (w >> 1), top, w, P_BOTTOM - top, PAL.palace);
-    rect(ctx, cx + (w >> 1) - 2, top, 2, P_BOTTOM - top, PAL.palaceShade);
+    shadeWall(ctx, cx - (w >> 1), top, w, P_BOTTOM - top, PALACE, 0);
     for (let x = cx - (w >> 1); x < cx + (w >> 1); x += 3) rect(ctx, x, top - 2, 2, 2, PAL.palace);
     for (let y = 0; y < spire; y++) {
       const half = Math.round(((y + 1) / spire) * (w / 2 - 1));
       rect(ctx, cx - half, top - 2 - spire + y, half * 2 + 1, 1, PAL.palaceRoof);
+      rect(ctx, cx - half, top - 2 - spire + y, Math.max(1, half >> 1), 1, PAL.roofGlint); // hełm: połać w słońcu
+      rect(ctx, cx + half, top - 2 - spire + y, 1, 1, PAL.roofDeep);
     }
     rect(ctx, cx - 1, top + 6, 2, 5, PAL.palaceShade);
   };
@@ -79,8 +102,6 @@ function drawPalace(ctx: CanvasRenderingContext2D, rnd: () => number): void {
   tower((P0 + P1) >> 1, 12, P_TOP - 28, 18);
   tower(P0 + 46, 6, P_TOP - 8, 8);
   tower(P1 - 46, 6, P_TOP - 8, 8);
-  // drzewa parku u stóp pałacu
-  for (let x = 586; x < 790; x += 14 + Math.floor(rnd() * 10)) plantBackItem(ctx, x, 'tree', rnd, -60 + Math.floor(rnd() * 10));
 }
 
 function drawBuilding(ctx: CanvasRenderingContext2D, rnd: () => number): void {
@@ -89,14 +110,21 @@ function drawBuilding(ctx: CanvasRenderingContext2D, rnd: () => number): void {
   const mid = (B0 + B1) >> 1;
   brickWall(ctx, mid - 22, B_TOP - 10, 44, 10, rnd);
   // dach dwuspadowy (z boku – trapez) + szczyt ryzalitu
-  for (let y = 0; y < 16; y++) {
-    rect(ctx, B0 - 3 + y, B_TOP - 1 - y, B1 - B0 + 6 - 2 * y, 1, y === 0 ? PAL.roofHi : PAL.roof);
+  // dach łupkowy: rzędy co 3 px, jasna kalenica i lewa krawędź, cień przy okapie
+  const roof = (x0: number, y0: number, w: number, h: number) => {
+    for (let y = 0; y < h; y++) {
+      const t = y === h - 1 ? 0 : y % 3 === 0 ? 3 : y < 2 ? 3.4 : 2;
+      rect(ctx, x0 + y, y0 - y, w - 2 * y, 1, SLATE[Math.floor(t)]);
+      rect(ctx, x0 + y, y0 - y, 1, 1, SLATE[0]);
+      rect(ctx, x0 + w - y - 1, y0 - y, 1, 1, SLATE[4]);
+    }
+  };
+  roof(B0 - 3, B_TOP - 1, B1 - B0 + 6, 16);
+  roof(mid - 24, B_TOP - 11, 48, 18);
+  for (const kx of [B0 + 30, B1 - 34]) { // kominy
+    shadeWall(ctx, kx, B_TOP - 22, 4, 10, BRICK, 0);
+    rect(ctx, kx - 1, B_TOP - 23, 6, 1, PAL.trim);
   }
-  for (let y = 0; y < 18; y++) {
-    rect(ctx, mid - 24 + y, B_TOP - 11 - y, 48 - 2 * y, 1, y < 1 ? PAL.roofHi : PAL.roof);
-  }
-  rect(ctx, B0 + 30, B_TOP - 22, 4, 10, PAL.brickShade); // komin
-  rect(ctx, B1 - 34, B_TOP - 22, 4, 10, PAL.brickShade);
   // gzymsy jasne
   rect(ctx, B0, B_TOP, B1 - B0, 2, PAL.trim);
   rect(ctx, B0, TRACK_Y - 38, B1 - B0, 6, PAL.trim);
@@ -106,8 +134,9 @@ function drawBuilding(ctx: CanvasRenderingContext2D, rnd: () => number): void {
   // okna z jasnym obramowaniem, drzwi
   for (const w of buildingWindows()) {
     rect(ctx, w.x - 1, w.y - 1, 7, w.h + 2, PAL.trim);
-    rect(ctx, w.x, w.y, 5, w.h, PAL.windowDay);
+    skyWindow(ctx, w.x, w.y, 5, w.h, PAL.glassHi, PAL.windowDay, PAL.roofDeep);
     rect(ctx, w.x + 2, w.y, 1, w.h, PAL.trim);
+    rect(ctx, w.x - 1, w.y + w.h + 1, 7, 1, PAL.brickDeep); // cień pod parapetem
   }
   rect(ctx, mid - 5, TRACK_Y - 26, 10, 21, PAL.trim);
   rect(ctx, mid - 4, TRACK_Y - 25, 8, 20, PAL.roof);
@@ -162,7 +191,7 @@ export const station: SegmentDef = {
   mapAnchor: (B0 + B1) >> 1, // dworzec
   render({ back, bed }, seed) {
     const rnd = mulberry32(seed);
-    drawPalace(back, rnd);
+    drawPalace(back);
     for (let x = 6; x < 236; x += 12 + Math.floor(rnd() * 14)) plantBackItem(back, x, rnd() < 0.5 ? 'tree' : 'pine', rnd, -4);
     for (let x = 416; x < 450; x += 14) plantBackItem(back, x, 'tree', rnd, -4);
     drawBuilding(back, rnd);

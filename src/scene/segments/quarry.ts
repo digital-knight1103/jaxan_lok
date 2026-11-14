@@ -4,11 +4,13 @@ import { TRACK_Y } from '../../config';
 import { PAL } from '../../palette';
 import { mulberry32 } from '../../engine/rng';
 import { line, rect } from '../../engine/sprite';
+import { ditherEdge, paint } from '../../engine/pixbuf';
 import { drawText, textWidth } from '../../engine/font';
 import type { SegmentDef } from './types';
 import { disc, drawBackStrip, drawGround, plantBackItem, scatterBushes } from './common';
 
 const WIDTH = 900;
+const ROCK = [PAL.rockDust, PAL.rockLight, PAL.rock, PAL.rockShade, PAL.rockDark] as const;
 /** x leja załadowczego nad torem (względem początku segmentu). */
 export const HOPPER_X = 560;
 const LEVELS = 6;
@@ -31,26 +33,39 @@ function drawWall(ctx: CanvasRenderingContext2D, rnd: () => number): void {
     const x0 = PIT_FROM + i * STEP_IN + Math.floor(rnd() * 6);
     const x1 = PIT_TO - i * STEP_IN - Math.floor(rnd() * 6);
     const top = TRACK_Y - LEVEL_H * (i + 1);
-    rect(ctx, x0, top, x1 - x0, LEVEL_H, PAL.rock);
-    // dolna część ściany w cieniu (dithering) + pozioma warstwa skalna
-    for (let y = top + 11; y < top + LEVEL_H; y++) {
-      for (let x = x0 + ((y & 1) ? 0 : 1); x < x1; x += 2) {
-        if (rnd() < (y - top - 10) / 12) rect(ctx, x, y, 1, 1, PAL.rockShade);
+    // styl2: ściana tarasu w 5 tonach – jasna półka u góry, ku stopie ciemniej i chłodniej,
+    // bloki skalne rozdzielone pionowymi spękaniami (lewy brzeg bloku w słońcu)
+    // spękania nieregularne: losowy początek i długość, część ścian bez spękań
+    const cracks: { x: number; a: number; b: number }[] = [];
+    for (let x = x0 + 4; x < x1; x += 5 + Math.floor(rnd() * 14)) {
+      if (rnd() < 0.35) continue;
+      const a = 2 + Math.floor(rnd() * 8);
+      cracks.push({ x, a, b: a + 3 + Math.floor(rnd() * 9) });
+    }
+    // spękanie w kolumnie x i tuż po nim (brzeg bloku w słońcu) – tablice po x
+    type Crack = (typeof cracks)[number];
+    const crackAt: (Crack | null)[] = new Array(x1 - x0).fill(null);
+    const afterAt: (Crack | null)[] = new Array(x1 - x0).fill(null);
+    for (const c of cracks) {
+      if (c.x - x0 < crackAt.length) crackAt[c.x - x0] = c;
+      if (c.x + 1 - x0 < afterAt.length) afterAt[c.x + 1 - x0] = c;
+    }
+    const strata = top + 7 + Math.floor(rnd() * 4);
+    paint(ctx, x0, top, x1 - x0, LEVEL_H, (x, y) => {
+      const cr = crackAt[x - x0];
+      const prev = afterAt[x - x0];
+      {
+        const ry = y - top;
+        let t = 1.2 + (ry / LEVEL_H) * 2.2 + Math.sin(x * 0.31 + y * 0.7) * 0.25;
+        if (ry < 2) t = ry === 0 ? 0 : 0.8; // półka w słońcu
+        else if (cr && ry >= cr.a && ry < cr.b) t = 3.6;
+        else if (prev && ry >= prev.a && ry < prev.b) t -= 1; // rim light na brzegu bloku
+        if (y === strata || y === strata + (Math.sin(x * 0.07 + i) > 0.6 ? 1 : 0)) t -= 0.9;
+        if (ry >= LEVEL_H - 2) t = 4; // chłodny cień u stopy ściany
+        return ROCK[ditherEdge(t, 5, x, y)];
       }
-    }
-    const strata = top + 6 + Math.floor(rnd() * 4);
-    for (let x = x0; x < x1; x++) if (rnd() < 0.7) rect(ctx, x, strata + (Math.sin(x * 0.07 + i) > 0.6 ? 1 : 0), 1, 1, PAL.rockLight);
-    // spękania ściany i plamy
-    for (let k = 0; k < (x1 - x0) / 3; k++) {
-      const cx = x0 + Math.floor(rnd() * (x1 - x0));
-      const cy = top + 3 + Math.floor(rnd() * (LEVEL_H - 4));
-      rect(ctx, cx, cy, 1, 2 + Math.floor(rnd() * 5), rnd() < 0.7 ? PAL.rockShade : PAL.rockDark);
-      if (rnd() < 0.3) rect(ctx, cx + 1, cy, 1, 1, PAL.rockLight);
-    }
-    // półka (jasna) i cień u stopy ściany
-    rect(ctx, x0, top, x1 - x0, 2, PAL.rockLight);
+    });
     for (let x = x0; x < x1; x += 2) if (rnd() < 0.3) rect(ctx, x, top, 1, 1, PAL.rockDust);
-    rect(ctx, x0, top + LEVEL_H - 1, x1 - x0, 1, PAL.rockShade);
     // skośne krawędzie tarasu: lewa oświetlona, prawa w cieniu
     for (let y = 0; y < LEVEL_H; y++) {
       rect(ctx, x0 - Math.floor(y / 3), top + y, 2, 1, PAL.rockLight);

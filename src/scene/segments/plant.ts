@@ -6,6 +6,7 @@ import { PAL } from '../../palette';
 import { mulberry32 } from '../../engine/rng';
 import { rect } from '../../engine/sprite';
 import type { SegmentDef, SegmentEnv } from './types';
+import { shadeWall, shadeCylinder, cylinderTone, type Ramp5 } from './shade';
 import { disc, drawBackStrip, drawGround, plantBackItem, scatterBushes } from './common';
 
 const WIDTH = 560;
@@ -43,31 +44,26 @@ export function plantLayout(seed: number): Layout {
   return { parts, windows, chimneys };
 }
 
-/** Pionowe cieniowanie walca (światło z lewej). */
-function cylinderColor(i: number, w: number): string {
-  const t = i / Math.max(1, w - 1);
-  return t < 0.2 ? PAL.plantHi : t < 0.62 ? PAL.plant : t < 0.85 ? PAL.plantShade : PAL.plantDark;
-}
+const PLANT: Ramp5 = [PAL.plantGlint, PAL.plantHi, PAL.plant, PAL.plantShade, PAL.plantDark];
 
 function drawPart(ctx: CanvasRenderingContext2D, p: Part): void {
   const top = BASE - p.h;
   if (p.kind === 'hall') {
-    rect(ctx, p.x, top, p.w, p.h, PAL.plantShade);
-    rect(ctx, p.x, top, p.w, 2, PAL.plantHi);
-    rect(ctx, p.x + p.w - 3, top, 3, p.h, PAL.plantDark);
+    shadeWall(ctx, p.x, top, p.w, p.h, PLANT, 3);
+    rect(ctx, p.x, top, p.w, 1, PAL.plantGlint); // krawędź dachu w słońcu
     // dachowe rury i wentylatory
     rect(ctx, p.x + 6, top - 5, 3, 5, PAL.plant);
     rect(ctx, p.x + 5, top - 6, 5, 1, PAL.plantHi);
     rect(ctx, p.x + p.w - 14, top - 3, 8, 3, PAL.plant);
     return;
   }
-  for (let i = 0; i < p.w; i++) rect(ctx, p.x + i, top, 1, p.h, cylinderColor(i, p.w));
+  shadeCylinder(ctx, p.x, top, p.w, p.h, PLANT);
   if (p.kind === 'tank') {
     // kopuła, pierścienie, balustrada na górze, drabina
     for (let i = 0; i < p.w; i++) {
       const u = (i / (p.w - 1)) * 2 - 1;
       const dome = Math.round(4 * Math.sqrt(1 - u * u));
-      rect(ctx, p.x + i, top - dome, 1, dome, cylinderColor(i, p.w));
+      for (let y = top - dome; y < top; y++) rect(ctx, p.x + i, y, 1, 1, cylinderTone(PLANT, i, p.w, p.x + i, y - 1));
     }
     for (let y = top + 10; y < BASE; y += 12) rect(ctx, p.x, y, p.w, 1, PAL.plantDark);
     rect(ctx, p.x - 1, top - 8, p.w + 2, 1, PAL.plantDark);

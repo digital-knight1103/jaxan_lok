@@ -39,9 +39,14 @@ function postSprite(k: Kind): HTMLCanvasElement {
       rect(c, CX - 1, hh, 2, k.mast + 4 - hh, PAL.sigMast);
       rect(c, CX, hh, 1, k.mast + 4 - hh, PAL.sigMastShade);
       rect(c, CX - 3, k.mast + 1, 7, 3, PAL.sigMastShade);
+      // styl2: rim light na słupie od słońca, chłodny cień pod głowicą
+      rect(c, CX - 1, hh, 1, k.mast + 4 - hh, PAL.rimLight);
+      rect(c, CX - 1, hh, 2, 2, PAL.coolShade);
+      rect(c, CX - 3, k.mast + 1, 1, 3, PAL.sigMast);
       // głowica: czarna tarcza tła z białą obwódką i komorami
       rect(c, hx, 0, HEAD_W + 2, hh, PAL.sigPlate);
       rect(c, hx + 1, 1, HEAD_W, hh - 2, PAL.sigHead);
+      rect(c, hx, 0, 1, hh, PAL.rimLight); // krawędź tarczy w słońcu
       k.lamps.forEach((_, i) => {
         rect(c, CX - 1, 2 + i * LAMP_STEP, 3, 3, PAL.sigOff);
         rect(c, CX - 2, 1 + i * LAMP_STEP, 5, 1, PAL.shadow); // daszek komory

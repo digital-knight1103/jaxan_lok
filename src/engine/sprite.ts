@@ -2,11 +2,12 @@
 
 export type DrawFn = (ctx: CanvasRenderingContext2D) => void;
 
-export function makeSprite(w: number, h: number, draw: DrawFn): HTMLCanvasElement {
+export function makeSprite(w: number, h: number, draw: DrawFn, readback = false): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
-  const ctx = c.getContext('2d')!;
+  // readback: canvas w pamięci CPU – szybkie getImageData (malowanie pikselami, nakładki światła)
+  const ctx = c.getContext('2d', readback ? { willReadFrequently: true } : undefined)!;
   ctx.imageSmoothingEnabled = false;
   draw(ctx);
   return c;

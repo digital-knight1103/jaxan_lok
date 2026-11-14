@@ -74,7 +74,11 @@ export function getPine(variant: number): HTMLCanvasElement {
           const half = Math.round(((y - top) / (bottom - top)) * (w / 2) * (0.55 + 0.45 * ((t + 1) / tiers)));
           for (let x = (w >> 1) - half; x <= (w >> 1) + half; x++) {
             const left = x < w >> 1;
-            const c = left && rnd() > 0.3 ? PAL.pineHi : rnd() > 0.85 ? PAL.foliageDeep : PAL.pine;
+            let c: string = left && rnd() > 0.3 ? PAL.pineHi : rnd() > 0.85 ? PAL.foliageDeep : PAL.pine;
+            // rim light na lewym brzegu piętra, chłodny cień pod piętrem i na prawym brzegu
+            if (x === (w >> 1) - half && half > 0) c = PAL.foliageHi;
+            else if (x === (w >> 1) + half && half > 0) c = PAL.foliageDeep;
+            else if (y === bottom - 1) c = PAL.foliageDeep;
             rect(ctx, x, y, 1, 1, c);
           }
         }

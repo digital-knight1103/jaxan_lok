@@ -100,6 +100,8 @@ export function drawFoliage(
         let idx = Math.round(base - lit * 1.3);
         if (dist > p.r - 0.8 && dy > 0) idx += 1; // ciemny brzeg od dołu – kępki się „odcinają"
         idx = Math.max(1, Math.min(last, idx));
+        // rim light (styl2): złoty brzeg kępki od strony słońca na oświetlonej części korony
+        if (dist > p.r - 1.1 && lit > 0.45 && base < 2.4) idx = 0;
         ctx.fillStyle = ramp[idx];
         ctx.fillRect(Math.round(p.x) + dx, Math.round(p.y) + dy, 1, 1);
       }

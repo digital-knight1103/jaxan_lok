@@ -5,8 +5,13 @@ import { makeSprite } from '../engine/sprite';
 import { Route } from './route';
 import { REGISTRY, LANDMARK_ORDER } from './segments/registry';
 import type { Placed, SegmentEnv } from './segments/types';
+import { buildRimOverlays, drawRim, type RimOverlays } from '../engine/light';
 
-interface Rendered { back: HTMLCanvasElement; bed: HTMLCanvasElement; front: HTMLCanvasElement }
+interface Rendered {
+  back: HTMLCanvasElement; bed: HTMLCanvasElement; front: HTMLCanvasElement;
+  /** Nakładki rim light (lewe/prawe słońce) – liczone raz, po jednej na klatkę (bez przycięć). */
+  backRim?: RimOverlays; bedRim?: RimOverlays; frontRim?: RimOverlays;
+}
 interface Item { p: Placed; x: number; r: Rendered }
 
 /** Ile px przed ekranem renderujemy segmenty zawczasu. */
@@ -22,9 +27,9 @@ export class World {
     let backCtx!: CanvasRenderingContext2D;
     let bedCtx!: CanvasRenderingContext2D;
     let frontCtx!: CanvasRenderingContext2D;
-    const back = makeSprite(w, H, (c) => (backCtx = c));
-    const bed = makeSprite(w, H, (c) => (bedCtx = c));
-    const front = makeSprite(w, H, (c) => (frontCtx = c));
+    const back = makeSprite(w, H, (c) => (backCtx = c), true);
+    const bed = makeSprite(w, H, (c) => (bedCtx = c), true);
+    const front = makeSprite(w, H, (c) => (frontCtx = c), true);
     p.def.render({ back: backCtx, bed: bedCtx, front: frontCtx }, p.seed);
     return { back, bed, front };
   }
@@ -53,6 +58,15 @@ export class World {
       if (onScreen && r) this.items.push({ p, x: p.startX - camX, r });
     }
     for (const k of this.cache.keys()) if (!keep.has(k)) this.cache.delete(k);
+    // nakładki światła: jedna warstwa na klatkę, gdy nic innego się nie renderowało
+    // (widoczne segmenty pierwsze – w kolejności trasy)
+    if (budget > 0) {
+      for (const r of this.cache.values()) {
+        if (!r.backRim) { r.backRim = buildRimOverlays(r.back); break; }
+        if (!r.bedRim) { r.bedRim = buildRimOverlays(r.bed); break; }
+        if (!r.frontRim) { r.frontRim = buildRimOverlays(r.front); break; }
+      }
+    }
   }
 
   get cachedCanvases(): number {
@@ -65,17 +79,26 @@ export class World {
   }
 
   drawBack(ctx: CanvasRenderingContext2D, env: SegmentEnv): void {
-    for (const it of this.items) ctx.drawImage(it.r.back, it.x, 0);
+    for (const it of this.items) {
+      ctx.drawImage(it.r.back, it.x, 0);
+      if (it.r.backRim) drawRim(ctx, it.r.backRim, it.x, env.sunL, env.sunR);
+    }
     for (const it of this.items) it.p.def.animate?.(ctx, it.x, env, it.p.seed);
   }
 
   drawBed(ctx: CanvasRenderingContext2D, env: SegmentEnv): void {
-    for (const it of this.items) ctx.drawImage(it.r.bed, it.x, 0);
+    for (const it of this.items) {
+      ctx.drawImage(it.r.bed, it.x, 0);
+      if (it.r.bedRim) drawRim(ctx, it.r.bedRim, it.x, env.sunL, env.sunR);
+    }
     for (const it of this.items) it.p.def.animateBed?.(ctx, it.x, env, it.p.seed);
   }
 
-  drawFront(ctx: CanvasRenderingContext2D): void {
-    for (const it of this.items) ctx.drawImage(it.r.front, it.x, 0);
+  drawFront(ctx: CanvasRenderingContext2D, env: SegmentEnv): void {
+    for (const it of this.items) {
+      ctx.drawImage(it.r.front, it.x, 0);
+      if (it.r.frontRim) drawRim(ctx, it.r.frontRim, it.x, env.sunL, env.sunR);
+    }
   }
 
   drawLights(ctx: CanvasRenderingContext2D, env: SegmentEnv): void {
