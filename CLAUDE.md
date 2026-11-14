@@ -36,3 +36,5 @@ Plan prac: `docs/plan.md`. Grafiki wzorcowe: `reference/`.
 - Moduły w `src/engine`, `src/scene`, `src/sprites`, `src/train`, `src/ui`.
 - Sprite'y proceduralne, generowane raz do offscreen canvas i cache'owane.
 - Komentarze po polsku przy kluczowych miejscach. Pętla z delta time, logika niezależna od FPS.
+- Malowanie JAXAN (pasy, szewrony, X, logo) ma pierwszeństwo przed efektami – brud, dithering
+  i rim light nie mogą zniekształcać barw ani kształtów malowania.

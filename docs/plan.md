@@ -311,3 +311,43 @@ Cztery zmiany, każda osobnym commitem.
   w repozytorium – styl wg opisu i `styl.jpg`.
 - Zrzuty: `screenshots/s1-*-dzien.png` / `s1-*-noc.png` (Sokółka stacja i żwirownia, Warszawa,
   Kamieniec, pola).
+
+---
+
+## STAN NA 14.11
+
+Przebudowa stylu grafiki wg `reference/styl2.png` (ciepłe światło z jednej strony, rim light,
+chłodne cienie, perspektywa powietrzna, dithering na przejściach, 5 tonów na materiał).
+
+### Zrobione
+
+- [x] **A – próbka krajobrazu** (`49a3ca1`): niebo z ditherowanym gradientem i poświatą słońca,
+  chmury podświetlone od słońca, 6 planów tła – zalesione pasma z pojedynczymi koronami
+  (`ridges.ts`), bufor pikseli `pixbuf.ts`.
+- [x] **B – reszta krajobrazu** (`36dcdfd`): nakładki rim light liczone raz na segment (`light.ts`),
+  odcinek WIEŚ (stodoła, koźlak, bocian, kapliczka, domy z dachówką, płoty), topole i wierzby,
+  pola w bruzdach, Kamieniec / Sokółka / Warszawa / kamieniołom / zakład / most / semafory
+  w 5 tonach (`shade.ts`), szybkie malowanie pikselami (`paint`) – brak przycięć.
+- [x] **C – pory dnia** (`dd93d9b`): złota godzina rano i wieczorem, chłodne południe, księżycowa
+  poświata; kierunek rim light za słońcem/księżycem (`DayCycle.golden`, `DayCycle.light` + testy);
+  wzgórza i chmury w dwóch wariantach światła.
+- [x] **D – lokomotywa Dragon 2** (`1613cf6`): 5 tonów magenty/czerni/zieleni, pas połysku, cień pod
+  okapem, odbicie nieba w szybach, wycieraczki, drzwi z klamkami, poręcze, bufory i sprzęgi,
+  przewody, wózki ze sprężynami i maźnicami, pantograf z cieniem. Zrzut `screenshots/d1-lokomotywa.png`.
+- [x] **D – węglarka Eamos** (`9cc285c`): ostojnica na wózkach Y25 bez prześwitu, koła na główce szyny,
+  zderzaki na wysokości lokomotywy, sprzęgi i przewody między pojazdami, podwozie z hamulcem,
+  malowanie JAXAN wg zdjęcia (pas, X z grubych ramion), rdza tylko na czerni, podskakuje tylko pudło.
+  Zrzuty `screenshots/d2-weglarka.png`, `screenshots/d3-weglarka-vs-wzor-2.png`.
+
+### DO ZROBIENIA (w kolejności)
+
+1. **Etap D – domknięcie**: zrzuty dzień i noc każdej lokalizacji (Sokółka stacja i żwirownia,
+   Warszawa, Kamieniec kamieniołom i stacja, wieś, pola, most) do `screenshots/`.
+2. **Etap D – dokumentacja**: aktualizacja `README.md` (styl2, wieś, pory dnia, tabor).
+3. **Etap D – lista do sprawdzenia na żywo**: obrót kół i sprzęgi przy podskokach, rim light wagonów
+   wieczorem, płynność 60 FPS przy wjazdach lokalizacji, chmury nocą (lekko brązowe – do oceny).
+4. **Etap 2 – Załadunek w kopalni** (`hopperX`, `load` 0→1 w 3 s, test stanu wagonów).
+5. **Etap 2 – Liczba wagonów `+`/`-`** (1–12, test clamp).
+6. **Etap 2 – Licznik km i ton** w `localStorage` (try/catch, zapis co 10 s).
+7. **Etap 2 – Tryb kinowy `C`** (HUD ukryty, zoom całkowity ×1 ↔ ×2).
+8. **Etap 2 – Pogoda `W`** (deszcz, śnieg, mokre odbicia na szynach).
