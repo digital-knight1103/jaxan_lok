@@ -14,7 +14,7 @@ const registry: SegmentDef[] = [
   def('quarry', 'landmark', 900, { mapIcon: 'quarry', mapLabel: 'KOPALNIA', mapAnchor: 560 }),
   def('station', 'landmark', 800, { mapIcon: 'station', mapLabel: 'KAMIENIEC ZĄBKOWICKI', mapAnchor: 325 }),
 ];
-const ORDER = ['quarry', 'station'];
+const ORDER = [{ ids: ['quarry'] }, { ids: ['station'] }];
 
 describe('RouteIndex – punkty na mapie trasy', () => {
   it('pozycje punktów zgadzają się z segmentami generatora trasy (ten sam seed)', () => {

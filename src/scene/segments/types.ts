@@ -46,7 +46,7 @@ export interface SegmentDef {
   mapAnchor?: number;
 }
 
-export type MapIcon = 'station' | 'quarry' | 'bridge' | 'plant';
+export type MapIcon = 'station' | 'quarry' | 'bridge' | 'plant' | 'gravel' | 'city';
 
 /** Segment umieszczony na trasie. */
 export interface Placed {

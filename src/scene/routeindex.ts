@@ -3,7 +3,7 @@
 // Pamięć ograniczona: dawne punkty są usuwane; zapytanie daleko wstecz odbudowuje
 // indeks od zera (generator jest szybki i deterministyczny).
 import { PX_PER_KMH } from '../config';
-import { Route } from './route';
+import { Route, type LandmarkStop } from './route';
 import type { MapIcon, SegmentDef } from './segments/types';
 
 /** 1 km „wizualny" w px świata (spójny z prędkościomierzem: px = km/h·s·PX_PER_KMH). */
@@ -43,7 +43,7 @@ export class RouteIndex {
   private lastIndex = -1;
   private keptFrom = 0;
 
-  constructor(private seed: number, private registry: SegmentDef[], private order: string[]) {
+  constructor(private seed: number, private registry: SegmentDef[], private order: LandmarkStop[]) {
     this.reset();
   }
 

@@ -25,9 +25,12 @@ const ICONS: Record<MapIcon, string[]> = {
   quarry: ['...y...', '..yyy..', '..ggg..', '.ggggg.', 'ggggggg'],
   bridge: ['nnnnnnn', 'nn.n.nn', 'n..n..n', 'n..n..n', 'n..n..n'],
   plant: ['.s...s.', 's...s..', 'd...d..', 'd.d.d.d', 'ddddddd'],
+  gravel: ['bbbbm..', '.w.m...', '.wm..a.', '.m..aaa', 'm..aaaa'],
+  city: ['...p...', '...p...', '..ppp..', 't.ppp.t', 'ttppptt'],
 };
 const ICON_COLORS: Record<string, string> = {
   b: PAL.signBlue, w: PAL.white, y: PAL.machine, g: PAL.rock, n: PAL.bridgeHi, s: PAL.smokeHi, d: PAL.plantHi,
+  m: PAL.locoMagentaHi, a: PAL.sand, p: PAL.pkinHi, t: PAL.towerGlassHi,
 };
 
 export class RouteMap {
@@ -66,7 +69,7 @@ export class RouteMap {
     for (const p of this.visible(center)) {
       const d = Math.abs(this.toMapX(p.anchorX, center) - x);
       // landmarki „wygrywają" z mostami/zakładami przy podobnej odległości
-      const score = d - (p.icon === 'station' || p.icon === 'quarry' ? 1.5 : 0);
+      const score = d - (rank(p.icon) === 1 ? 1.5 : 0);
       if (score < bestD) {
         bestD = score;
         best = p;
@@ -190,7 +193,7 @@ export class RouteMap {
     }
 
     // podpis: najechany punkt albo najbliższy landmark przed pociągiem
-    const label = this.hover ?? this.index.between(trainX, trainX + MAP_RANGE_KM * KM_PX).find((p) => p.icon === 'station' || p.icon === 'quarry');
+    const label = this.hover ?? this.index.between(trainX, trainX + MAP_RANGE_KM * KM_PX).find((p) => rank(p.icon) === 1);
     if (label) {
       const km = (label.anchorX - trainX) / KM_PX;
       const kmText = Math.abs(km).toFixed(1);
@@ -208,5 +211,5 @@ export class RouteMap {
 }
 
 function rank(icon: MapIcon): number {
-  return icon === 'station' || icon === 'quarry' ? 1 : 0;
+  return icon === 'bridge' || icon === 'plant' ? 0 : 1;
 }

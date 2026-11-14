@@ -1,12 +1,20 @@
-// Generator nieskończonej trasy: fillery losowane z seeda, a co LANDMARK_SPACING_PX
-// kolejny punkt charakterystyczny z cyklu „opowieści" (kopalnia → stacja → …).
+// Generator nieskończonej trasy: fillery (pola, lasy, mosty…) losowane z seeda, a co
+// LANDMARK_SPACING_PX kolejna lokalizacja z pętli (Sokółka → Warszawa → Kamieniec → …).
+// Lokalizacja = grupa segmentów (np. most na Wiśle + stacja Warszawa) ustawionych
+// jeden za drugim, opcjonalnie z odstępem gapPx wypełnionym fillerami.
 // Trzyma tylko okno segmentów wokół widoku – pamięć nie rośnie z dystansem.
 import { LANDMARK_SPACING_PX } from '../config';
 import { mulberry32 } from '../engine/rng';
 import type { Placed, SegmentDef } from './segments/types';
 
-/** Pierwszy landmark pojawia się szybko po starcie (~10 s jazdy). */
-export const FIRST_LANDMARK_PX = 1500;
+/** Pierwsza lokalizacja szybko po starcie (~50 s jazdy; tarcza ostrzegawcza widoczna od razu). */
+export const FIRST_LANDMARK_PX = 6800;
+
+/** Lokalizacja na pętli trasy: segmenty po kolei, gapPx = odstęp między nimi. */
+export interface LandmarkStop {
+  ids: string[];
+  gapPx?: number;
+}
 
 /** Ile px za lewą krawędzią trzymamy segmenty (wagony wystają poza ekran). */
 const KEEP_BEHIND_PX = 640;
@@ -14,7 +22,10 @@ const KEEP_BEHIND_PX = 640;
 export class Route {
   private rnd: () => number;
   private fillers: SegmentDef[];
-  private landmarks: SegmentDef[];
+  private stops: { defs: SegmentDef[]; gapPx: number }[];
+  /** Pozostałe segmenty bieżącej lokalizacji. */
+  private pending: SegmentDef[] = [];
+  private pendingGap = 0;
   private segs: Placed[] = [];
   private nextX = 0;
   private nextIndex = 0;
@@ -22,12 +33,15 @@ export class Route {
   private landmarkNo = 0;
   private gapNeeded = FIRST_LANDMARK_PX;
 
-  constructor(seed: number, registry: SegmentDef[], landmarkOrder: string[]) {
+  constructor(seed: number, registry: SegmentDef[], landmarkOrder: LandmarkStop[]) {
     this.rnd = mulberry32(seed);
     this.fillers = registry.filter((d) => d.kind === 'filler');
-    this.landmarks = landmarkOrder
-      .map((id) => registry.find((d) => d.id === id))
-      .filter((d): d is SegmentDef => !!d);
+    this.stops = landmarkOrder
+      .map((st) => ({
+        defs: st.ids.map((id) => registry.find((d) => d.id === id)).filter((d): d is SegmentDef => !!d),
+        gapPx: st.gapPx ?? 0,
+      }))
+      .filter((st) => st.defs.length > 0);
   }
 
   /** x świata najstarszego trzymanego segmentu. */
@@ -54,11 +68,20 @@ export class Route {
 
   private generateOne(): void {
     let def: SegmentDef;
-    if (this.landmarks.length > 0 && this.sinceLandmark >= this.gapNeeded) {
-      def = this.landmarks[this.landmarkNo % this.landmarks.length];
+    const prev = this.segs[this.segs.length - 1]?.def;
+    if (this.pending.length === 0 && this.stops.length > 0 && this.sinceLandmark >= this.gapNeeded) {
+      // początek kolejnej lokalizacji z pętli
+      const st = this.stops[this.landmarkNo % this.stops.length];
       this.landmarkNo++;
+      this.pending = [...st.defs];
+      this.pendingGap = st.gapPx;
+      this.sinceLandmark = this.gapNeeded = 0;
+    }
+    // nigdy dwa mosty pod rząd – także filler-most tuż przed mostem lokalizacji
+    if (this.pending.length > 0 && this.sinceLandmark >= this.gapNeeded && !(this.pending[0].bridge && prev?.bridge)) {
+      def = this.pending.shift()!;
       this.sinceLandmark = 0;
-      this.gapNeeded = LANDMARK_SPACING_PX;
+      this.gapNeeded = this.pending.length > 0 ? this.pendingGap : LANDMARK_SPACING_PX;
     } else {
       def = this.pickFiller();
       this.sinceLandmark += def.width;

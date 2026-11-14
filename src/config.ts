@@ -27,8 +27,11 @@ export const AUTO_RESUME_MS = 180_000;
 export const DAY_LENGTH_S = 480;
 export const NIGHT_TOGGLE_S = 3;
 
-/** Odstęp między punktami charakterystycznymi trasy (px świata). */
-export const LANDMARK_SPACING_PX = 20000;
+/**
+ * Odstęp (pola, lasy) między lokalizacjami trasy (px świata). Przy 100 km/h (≈167 px/s)
+ * kolejna lokalizacja pojawia się co ok. 2,3–2,6 min.
+ */
+export const LANDMARK_SPACING_PX = 22000;
 
 /** Domyślna liczba wagonów. */
 export const DEFAULT_WAGONS = 6;
