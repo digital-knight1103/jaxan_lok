@@ -65,14 +65,14 @@ export function buildRimOverlays(src: HTMLCanvasElement): RimOverlays {
 }
 
 /** Rysuje nakładki z kryciem wg kierunku słońca (sunL/sunR 0..1). */
-export function drawRim(ctx: CanvasRenderingContext2D, r: RimOverlays, x: number, sunL: number, sunR: number): void {
+export function drawRim(ctx: CanvasRenderingContext2D, r: RimOverlays, x: number, sunL: number, sunR: number, y = 0): void {
   if (sunL > 0.01) {
     ctx.globalAlpha = Math.min(1, sunL);
-    ctx.drawImage(r.left, x, 0);
+    ctx.drawImage(r.left, x, y);
   }
   if (sunR > 0.01) {
     ctx.globalAlpha = Math.min(1, sunR);
-    ctx.drawImage(r.right, x, 0);
+    ctx.drawImage(r.right, x, y);
   }
   ctx.globalAlpha = 1;
 }

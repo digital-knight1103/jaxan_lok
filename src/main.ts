@@ -403,12 +403,12 @@ startLoop(
 
     // 3. pociąg, przewody i pierwszy plan (też przyciemniane)
     fctx.clearRect(0, 0, W, H);
-    consist.draw(fctx);
+    consist.draw(fctx, light.sunL, light.sunR);
     drawWires(fctx, camX, sway);
     birds.draw(fctx, camX, sway);
     world.drawFront(fctx, env);
     fore.draw(fctx, worldX);
-    applyTint(fctx, night, dayCycle.warmth, 0.5, dayCycle.golden); // pociąg – bohater sceny – czytelny także nocą
+    applyTint(fctx, night, dayCycle.warmth * 0.6, 0.5, dayCycle.golden * 0.35); // pociąg – bohater sceny – czytelny także nocą
     ctx.drawImage(frontCanvas, 0, 0);
 
     // 4. światła pociągu i iskry (nie przyciemniane)

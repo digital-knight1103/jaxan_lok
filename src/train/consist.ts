@@ -3,7 +3,8 @@
 import { TRACK_Y, TRAIN_X, PX_PER_KMH, DEFAULT_WAGONS } from '../config';
 import { getDragon2, LOCO_H, LOCO_LIGHTS, LOCO_W, LOCO_WHEEL_X, LOCO_WHEEL_Y } from '../sprites/dragon2';
 import { PAL } from '../palette';
-import { disc } from '../engine/sprite';
+import { disc, cached } from '../engine/sprite';
+import { buildRimOverlays, drawRim } from '../engine/light';
 import { getEamos, WAGON_H, WAGON_W, WAGON_WHEEL_X, WAGON_WHEEL_Y } from '../sprites/eamos';
 import { WHEEL_FRAMES } from '../sprites/wheels';
 
@@ -103,7 +104,8 @@ export class Consist {
     ctx.globalAlpha = 1;
   }
 
-  draw(ctx: CanvasRenderingContext2D): void {
+  /** sunL/sunR: kierunek i siła światła (rim light na krawędziach pudeł – jak krajobraz). */
+  draw(ctx: CanvasRenderingContext2D, sunL = 1, sunR = 0): void {
     // cień składu na tłuczniu (pod ramami)
     const leftX = Math.max(0, this.wagonX(this.loads.length - 1));
     ctx.globalAlpha = 0.45;
@@ -129,6 +131,7 @@ export class Consist {
     const by = y + this.bounce(-1);
     ctx.drawImage(l.pantograph, X, y); // sprężyna dociska ślizg do przewodu – bez drgań
     ctx.drawImage(l.body, X, by);
+    drawRim(ctx, cached('dragon2-rim', () => buildRimOverlays(l.body)), X, sunL, sunR, by);
     const wf = l.wheels[this.wheelFrame(l.wheels[0].width)];
     for (const wx of LOCO_WHEEL_X) ctx.drawImage(wf, X + wx - (wf.width >> 1), y + LOCO_WHEEL_Y);
     ctx.drawImage(l.bogies, X, y);

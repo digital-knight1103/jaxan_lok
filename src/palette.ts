@@ -316,6 +316,15 @@ export const PAL = {
   towerConcreteDeep: '#4C5460',
   sandGlint: '#FAECC6',
   gravelGlint: '#D6CEBC',
+  // --- tabor styl2: rampy 5 tonów (blask, światło, baza, półcień, cień) ---
+  locoGlint: '#646474',
+  locoDeep: '#0B0B0F',
+  magentaDeep: '#480838',
+  greenGlint: '#C2F48A',
+  greenHi: '#86E050',
+  greenDeep: '#245A18',
+  skyReflect: '#C6DDF0',
+  skyReflectHi: '#EEF6FC',
 } as const;
 
 export type PalKey = keyof typeof PAL;
