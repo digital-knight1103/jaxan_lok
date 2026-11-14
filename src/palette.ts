@@ -112,6 +112,15 @@ export const PAL = {
   palaceShade: '#9E8E7A',
   palaceRoof: '#5E6474',
   lampGlow: '#FFE6A0',
+  // --- iskry, HUD ---
+  spark: '#FF9A30',
+  sparkHot: '#FFF4B0',
+  hudBg: '#141418',
+  hudButton: '#26262C',
+  hudButtonHi: '#34343C',
+  hudText: '#E8E8EC',
+  hudDim: '#8A8A96',
+
   // --- sieć trakcyjna ---
   pole: '#5A5E66',
   poleHi: '#80848C',

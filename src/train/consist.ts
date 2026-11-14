@@ -42,6 +42,17 @@ export class Consist {
     return TRAIN_X - (i + 1) * (WAGON_W + GAP);
   }
 
+  /** Ekranowe x kół widocznych pojazdów (iskry hamulcowe). */
+  wheelXs(): number[] {
+    const xs = LOCO_WHEEL_X.map((wx) => TRAIN_X + wx);
+    for (let i = 0; i < this.loads.length; i++) {
+      const x = this.wagonX(i);
+      if (x + WAGON_W < 0) break;
+      for (const wx of WAGON_WHEEL_X) xs.push(x + wx);
+    }
+    return xs;
+  }
+
   draw(ctx: CanvasRenderingContext2D): void {
     // wagony (od najdalszego), potem lokomotywa
     for (let i = this.loads.length - 1; i >= 0; i--) {

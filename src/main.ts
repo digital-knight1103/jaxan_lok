@@ -1,7 +1,14 @@
-import { START_KMH, PX_PER_KMH, TRACK_Y } from './config';
+// JAXAN Express – start i sklejenie modułów: stan, wejście, pętla, rysowanie warstw.
+import {
+  START_KMH, PX_PER_KMH, TRACK_Y, CURSOR_HIDE_MS, HUD_HIDE_MS, AUTO_RESUME_MS,
+} from './config';
 import { PAL } from './palette';
+import { initialState } from './state';
 import { createScreen } from './engine/screen';
 import { startLoop } from './engine/loop';
+import { bindInput, type Action } from './engine/input';
+import { IdleTracker } from './engine/idle';
+import { AudioEngine } from './engine/audio';
 import { drawSky } from './scene/sky';
 import { MountainLayer } from './scene/mountains';
 import { CloudLayer } from './scene/clouds';
@@ -9,23 +16,28 @@ import { HillLayer } from './scene/hills';
 import { ForegroundLayer } from './scene/foreground';
 import { drawTrack } from './scene/track';
 import { drawPoles, drawWires } from './scene/catenary';
+import { Sparks } from './scene/sparks';
 import { World } from './scene/world';
 import { Consist } from './train/consist';
 import { stepSpeed, adjustTarget } from './train/physics';
+import { Hud } from './ui/hud';
 import type { SegmentEnv } from './scene/segments/types';
 
 const screen = createScreen();
 const ctx = screen.buffer;
 const params = new URLSearchParams(location.search);
 
+const state = initialState();
+if (params.has('stop')) {
+  state.running = false;
+  state.kmh = 0;
+}
 // Pozycja świata (px) – rośnie z prędkością pociągu. ?x= pozwala skoczyć w trasę (debug).
 let worldX = Number(params.get('x') ?? 0) || 0;
-let kmh = START_KMH;
-let targetKmh = START_KMH;
-let running = !params.has("stop");
-if (!running) kmh = 0;
 let time = 0;
+let night = false; // E5: zastąpione cyklem dobowym
 
+// --- warstwy sceny ---
 const far = new MountainLayer(7, 0.05, {
   base: PAL.mountFar, light: PAL.mountFarHi, baseY: 200, height: 110, roughness: 0.8,
 });
@@ -36,28 +48,123 @@ const clouds = new CloudLayer(21);
 const hills = new HillLayer(31);
 const fore = new ForegroundLayer(41);
 const world = new World();
-const consist = new Consist();
+const consist = new Consist(state.wagons);
+const sparks = new Sparks();
+const hud = new Hud();
+const audio = new AudioEngine();
 
-// Tymczasowe sterowanie (pełne w E4).
-window.addEventListener('keydown', (e) => {
-  if (e.repeat) return;
-  if (e.code === 'KeyF') screen.toggleFullscreen();
-  if (e.code === 'Space') running = !running;
-  if (e.code === 'ArrowRight') targetKmh = adjustTarget(targetKmh, +1);
-  if (e.code === 'ArrowLeft') targetKmh = adjustTarget(targetKmh, -1);
+// --- bezczynność: kursor, HUD, powrót do automatu ---
+const cursorIdle = new IdleTracker(CURSOR_HIDE_MS);
+const hudIdle = new IdleTracker(HUD_HIDE_MS);
+const autoIdle = new IdleTracker(AUTO_RESUME_MS);
+let pointerHorn = false;
+
+function action(a: Action): void {
+  switch (a) {
+    case 'horn-down':
+      if (!state.horn) {
+        state.horn = true;
+        audio.hornStart();
+      }
+      break;
+    case 'horn-up':
+      if (state.horn) {
+        state.horn = false;
+        audio.hornStop();
+      }
+      break;
+    case 'toggle-night':
+      night = !night;
+      state.dayAuto = false;
+      break;
+    case 'toggle-run':
+      state.running = !state.running;
+      if (state.running && state.targetKmh === 0) state.targetKmh = START_KMH;
+      break;
+    case 'faster':
+      state.targetKmh = adjustTarget(state.targetKmh, +1);
+      state.running = true;
+      break;
+    case 'slower':
+      state.targetKmh = adjustTarget(state.targetKmh, -1);
+      break;
+    case 'toggle-mute':
+      state.muted = !state.muted;
+      audio.setMuted(state.muted);
+      break;
+    case 'fullscreen':
+      screen.toggleFullscreen();
+      break;
+    default:
+      break; // etap 2
+  }
+}
+
+bindInput(screen.canvas, {
+  onAction: action,
+  onActivity() {
+    const now = performance.now();
+    cursorIdle.touch(now);
+    hudIdle.touch(now);
+    autoIdle.touch(now);
+    audio.unlock();
+  },
+  onPointerDown(cx, cy) {
+    const p = screen.toGame(cx, cy);
+    const hit = hud.hit(p.x, p.y);
+    if (hit && 'action' in hit) {
+      action(hit.action);
+      if (hit.action === 'horn-down') pointerHorn = true;
+      return;
+    }
+    if (hit && 'setTarget' in hit) {
+      state.targetKmh = hit.setTarget;
+      if (hit.setTarget > 0) state.running = true;
+      return;
+    }
+    if (hud.contains(p.x, p.y)) return;
+    // klik/dotyk w lokomotywę = trąbienie (także gdy HUD był ukryty)
+    const r = consist.locoRect();
+    if (p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h) {
+      action('horn-down');
+      pointerHorn = true;
+    }
+    // każdy inny dotyk tylko pokazuje HUD (onActivity)
+  },
+  onPointerUp() {
+    if (pointerHorn) {
+      pointerHorn = false;
+      action('horn-up');
+    }
+  },
 });
 
 startLoop(
   (dt) => {
+    const now = performance.now();
     time += dt;
-    kmh = stepSpeed(kmh, running ? targetKmh : 0, dt);
-    worldX += kmh * PX_PER_KMH * dt;
-    consist.update(dt, kmh);
+    document.body.classList.toggle('hide-cursor', cursorIdle.isIdle(now));
+    hud.update(dt, !hudIdle.isIdle(now));
+    // po kilku minutach bez dotykania scena wraca do jazdy automatycznej
+    if (autoIdle.isIdle(now)) {
+      state.running = true;
+      state.targetKmh = START_KMH;
+      state.dayAuto = true;
+    }
+
+    const prev = state.kmh;
+    state.kmh = stepSpeed(state.kmh, state.running ? state.targetKmh : 0, dt);
+    const braking = state.kmh < prev - 1e-9;
+    worldX += state.kmh * PX_PER_KMH * dt;
+    consist.update(dt, state.kmh);
     clouds.update(dt);
+    if (braking && state.kmh > 3) sparks.brake(consist.wheelXs(), TRACK_Y - 1, 3 + state.kmh / 20, dt);
+    sparks.update(dt);
+    audio.update(state.kmh, braking, dt);
   },
   () => {
     const camX = Math.floor(worldX);
-    const env: SegmentEnv = { night: 0, time };
+    const env: SegmentEnv = { night: night ? 1 : 0, time };
     world.prepare(camX);
 
     // od tyłu do przodu
@@ -71,10 +178,15 @@ startLoop(
     world.drawBed(ctx);
     drawTrack(ctx, camX);
     consist.draw(ctx);
+    sparks.draw(ctx);
     drawWires(ctx, camX);
     world.drawFront(ctx);
     fore.draw(ctx, worldX);
     world.drawLights(ctx, env);
+    hud.draw(ctx, {
+      kmh: state.kmh, targetKmh: state.targetKmh, running: state.running,
+      night, muted: state.muted, horn: state.horn,
+    });
     screen.present();
   },
 );
@@ -84,7 +196,8 @@ if (import.meta.env.DEV) {
   void Promise.all([import('./scene/route'), import('./scene/segments/registry'), import('./config')]).then(
     ([{ Route }, { REGISTRY, LANDMARK_ORDER }, { ROUTE_SEED }]) => {
       (window as unknown as Record<string, unknown>).__jx = {
-        /** x świata początku pierwszego segmentu o danym id. */
+        state,
+        /** x świata początku n-tego segmentu o danym id. */
         find(id: string, nth = 0): number {
           const r = new Route(ROUTE_SEED, REGISTRY, LANDMARK_ORDER);
           const seen: number[] = [];
