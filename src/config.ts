@@ -35,3 +35,32 @@ export const DEFAULT_WAGONS = 6;
 
 /** Ziarno generatora trasy. */
 export const ROUTE_SEED = 20261114;
+
+/**
+ * Poziomy dźwięku – wszystkie w jednym miejscu (0..1 to wzmocnienie GainNode).
+ * Silniki trakcyjne celowo ciche i stłumione filtrem – mają być „pod spodem".
+ */
+export const AUDIO = {
+  /** Silniki: głośność na postoju / bazowa w ruchu / przyrost do 120 km/h. */
+  motorIdle: 0.006,
+  motorBase: 0.02,
+  motorPerSpeed: 0.028,
+  /** Udział wysokiego „gwizdu" falownika w miksie silnika. */
+  motorWhineMix: 0.06,
+  /** Filtr dolnoprzepustowy silnika (Hz): baza + przyrost na km/h. */
+  motorLowpassBase: 180,
+  motorLowpassPerKmh: 3,
+  /** Wysokość tonu (Hz): niski szum i gwizd – rośnie łagodnie. */
+  motorPitchBase: 35,
+  motorPitchPerKmh: 0.35,
+  whinePitchBase: 120,
+  whinePitchPerKmh: 2.2,
+  /** Stukot kół na złączach: baza + przyrost z prędkością. */
+  clackBase: 0.18,
+  clackPerSpeed: 0.12,
+  /** Klakson (dwutonowy). */
+  horn: 0.16,
+  /** Pisk hamulców. */
+  squealBase: 0.01,
+  squealRange: 0.025,
+} as const;

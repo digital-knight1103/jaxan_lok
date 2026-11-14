@@ -2,7 +2,18 @@
 // szum silników trakcyjnych, dwutonowa syrena i pisk hamulców.
 // Domyślnie WYCISZONY (ekran w biurze). AudioContext powstaje dopiero w unlock(),
 // wywoływanym przy pierwszej interakcji użytkownika.
-import { PX_PER_KMH } from '../config';
+import { AUDIO, MAX_KMH, PX_PER_KMH } from '../config';
+
+/** Parametry silnika dla prędkości – czysta funkcja (testowana). */
+export function motorParams(kmh: number): { gain: number; lowpass: number; pitch: number; whine: number } {
+  const v = Math.max(0, Math.min(1, kmh / MAX_KMH));
+  return {
+    gain: kmh > 0.5 ? AUDIO.motorBase + v * AUDIO.motorPerSpeed : AUDIO.motorIdle,
+    lowpass: AUDIO.motorLowpassBase + kmh * AUDIO.motorLowpassPerKmh,
+    pitch: AUDIO.motorPitchBase + kmh * AUDIO.motorPitchPerKmh,
+    whine: AUDIO.whinePitchBase + kmh * AUDIO.whinePitchPerKmh,
+  };
+}
 
 /** Odstęp złączy szyn (px świata) i rozstaw osi w wózku (px). */
 const JOINT_PX = 96;
@@ -17,7 +28,7 @@ export class AudioEngine {
   muted = true;
   private ctx: Ctx | null = null;
   private master: GainNode | null = null;
-  private motor: { osc: OscillatorNode; whine: OscillatorNode; gain: GainNode; filter: BiquadFilterNode } | null = null;
+  private motor: { osc: OscillatorNode; whine: OscillatorNode; gain: GainNode; filter: BiquadFilterNode; filter2: BiquadFilterNode } | null = null;
   private horn: { gain: GainNode } | null = null;
   private squeal: { osc: OscillatorNode; gain: GainNode } | null = null;
   private noise: AudioBuffer | null = null;
@@ -52,26 +63,33 @@ export class AudioEngine {
     const d = this.noise.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
 
-    // silniki trakcyjne: niski „szum" + wysoki gwizd falownika
+    // silniki trakcyjne: niski „szum" + cichy gwizd falownika, przez DWA filtry
+    // dolnoprzepustowe w szeregu (stromsze tłumienie – dźwięk „pod spodem")
+    const m0 = motorParams(0);
     const gain = ctx.createGain();
     gain.gain.value = 0;
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = 400;
+    filter.frequency.value = m0.lowpass;
+    filter.Q.value = 0.5;
+    const filter2 = ctx.createBiquadFilter();
+    filter2.type = 'lowpass';
+    filter2.frequency.value = m0.lowpass;
+    filter2.Q.value = 0.5;
     const osc = ctx.createOscillator();
     osc.type = 'sawtooth';
-    osc.frequency.value = 40;
+    osc.frequency.value = m0.pitch;
     const whine = ctx.createOscillator();
     whine.type = 'triangle';
-    whine.frequency.value = 200;
+    whine.frequency.value = m0.whine;
     const whineGain = ctx.createGain();
-    whineGain.gain.value = 0.15;
+    whineGain.gain.value = AUDIO.motorWhineMix;
     osc.connect(filter);
     whine.connect(whineGain).connect(filter);
-    filter.connect(gain).connect(this.master);
+    filter.connect(filter2).connect(gain).connect(this.master);
     osc.start();
     whine.start();
-    this.motor = { osc, whine, gain, filter };
+    this.motor = { osc, whine, gain, filter, filter2 };
 
     // syrena: dwa piłokształtne tony przez filtr, wspólna obwiednia
     const hg = ctx.createGain();
@@ -128,14 +146,16 @@ export class AudioEngine {
     const v = kmh / 120;
     // parametry zmieniamy tylko przy realnej zmianie (nie co klatkę) – oś czasu
     // AudioParam nie puchnie przy wielogodzinnej pracy
-    const sq = braking && kmh > 0.5 && kmh < 40 ? 0.025 * (1 - kmh / 40) + 0.01 : 0;
+    const sq = braking && kmh > 0.5 && kmh < 40 ? AUDIO.squealRange * (1 - kmh / 40) + AUDIO.squealBase : 0;
     if (Math.abs(kmh - this.lastKmh) >= 0.5 || (sq > 0) !== (this.lastSq > 0)) {
       this.lastKmh = kmh;
       this.lastSq = sq;
-      this.motor.osc.frequency.setTargetAtTime(38 + kmh * 0.9, now, 0.2);
-      this.motor.whine.frequency.setTargetAtTime(180 + kmh * 9, now, 0.2);
-      this.motor.filter.frequency.setTargetAtTime(250 + kmh * 12, now, 0.2);
-      this.motor.gain.gain.setTargetAtTime(kmh > 0.5 ? 0.05 + v * 0.07 : 0.015, now, 0.3);
+      const m = motorParams(kmh);
+      this.motor.osc.frequency.setTargetAtTime(m.pitch, now, 0.2);
+      this.motor.whine.frequency.setTargetAtTime(m.whine, now, 0.2);
+      this.motor.filter.frequency.setTargetAtTime(m.lowpass, now, 0.2);
+      this.motor.filter2.frequency.setTargetAtTime(m.lowpass, now, 0.2);
+      this.motor.gain.gain.setTargetAtTime(m.gain, now, 0.3);
       this.squeal.gain.gain.setTargetAtTime(sq, now, 0.1);
     }
 
@@ -161,7 +181,7 @@ export class AudioEngine {
     bp.Q.value = 2;
     const g = ctx.createGain();
     g.gain.setValueAtTime(0, at);
-    g.gain.linearRampToValueAtTime(0.18 + v * 0.12, at + 0.004);
+    g.gain.linearRampToValueAtTime(AUDIO.clackBase + v * AUDIO.clackPerSpeed, at + 0.004);
     g.gain.exponentialRampToValueAtTime(0.001, at + 0.09);
     src.connect(bp).connect(g).connect(this.master);
     src.start(at);
@@ -174,7 +194,7 @@ export class AudioEngine {
     const g = this.horn.gain.gain;
     g.cancelScheduledValues(now);
     g.setValueAtTime(g.value, now);
-    g.linearRampToValueAtTime(0.16, now + 0.08); // narastanie
+    g.linearRampToValueAtTime(AUDIO.horn, now + 0.08); // narastanie
     this.hornAt = now;
   }
 
@@ -188,7 +208,7 @@ export class AudioEngine {
       g.cancelScheduledValues(now);
       g.setValueAtTime(g.value, now);
     } else {
-      g.setValueAtTime(0.16, from);
+      g.setValueAtTime(AUDIO.horn, from);
     }
     g.linearRampToValueAtTime(0, from + 0.3); // wygaszanie
   }
