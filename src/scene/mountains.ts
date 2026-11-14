@@ -68,10 +68,11 @@ export class MountainLayer {
       ctx.fillRect(x, y, 1, H - y);
       // Zbocze wznoszące się w prawo „patrzy" w lewo, ku słońcu → jaśniejsze
       // smugi biegnące od grzbietu w dół (jak fasety na styl.jpg).
-      const next = top[(x + 2) % W];
-      if (next < y) {
+      // nachylenie liczone na szerszym oknie → całe fasety zamiast pojedynczych pasków
+      const slope = top[(x + 4) % W] - top[(x - 4 + W) % W];
+      if (slope < -1) {
         ctx.fillStyle = s.light;
-        const len = 6 + ((x * 7) % 13) + (y - next) * 3;
+        const len = Math.round(14 + 8 * Math.sin(x * 0.09) + Math.min(24, -slope * 2));
         ctx.fillRect(x, y, 1, Math.min(len, H - y));
       }
     }

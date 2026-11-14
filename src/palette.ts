@@ -43,6 +43,50 @@ export const PAL = {
   ballast: '#6E6A64',
   ballastShade: '#4E4A46',
 
+
+  // --- zieleń (styl.jpg: soczysta, żółtozielone światła) ---
+  grassHi: '#B6E04A',
+  grass: '#7EC23A',
+  grassMid: '#4E9A2E',
+  grassDark: '#2E6A26',
+  grassDeep: '#1C4420',
+  foliageHi: '#8ED04A',
+  foliage: '#4E9A36',
+  foliageShade: '#2E6A2E',
+  foliageDeep: '#1A4224',
+  pine: '#2A5A34',
+  pineHi: '#3E7A40',
+  trunk: '#4A3424',
+  earth: '#4A3A2A',
+  earthShade: '#33281E',
+  midHill: '#3E7A5A',
+  midHillHi: '#5A9A6A',
+  midHillShade: '#2E5E4A',
+  frontDeep: '#123018',
+
+  // --- most stalowy (ciemne żelazo jak na styl.jpg) ---
+  bridge: '#4A3E36',
+  bridgeHi: '#6A5A4C',
+  bridgeShade: '#2E2620',
+  bridgeRivet: '#7A6A58',
+
+  // --- przemysł ---
+  plant: '#5A5048',
+  plantHi: '#7A6E62',
+  plantShade: '#3A332E',
+  plantDark: '#2A2420',
+  rust: '#7A4A2E',
+  windowDay: '#3A3A3A',
+  windowLit: '#F0A830',
+  windowGlow: '#FFD070',
+  smoke: '#6A6E72',
+  smokeHi: '#8A8E92',
+  smokeDark: '#4A4E52',
+
+  // --- sieć trakcyjna ---
+  pole: '#5A5E66',
+  poleHi: '#80848C',
+  wire: '#2A2C30',
   // --- niebo (dzień) wg styl.jpg ---
   skyTop: '#3E6E9A',
   skyMid: '#5E94B8',
