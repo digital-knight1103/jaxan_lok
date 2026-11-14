@@ -69,8 +69,9 @@ export class World {
     for (const it of this.items) it.p.def.animate?.(ctx, it.x, env, it.p.seed);
   }
 
-  drawBed(ctx: CanvasRenderingContext2D): void {
+  drawBed(ctx: CanvasRenderingContext2D, env: SegmentEnv): void {
     for (const it of this.items) ctx.drawImage(it.r.bed, it.x, 0);
+    for (const it of this.items) it.p.def.animateBed?.(ctx, it.x, env, it.p.seed);
   }
 
   drawFront(ctx: CanvasRenderingContext2D): void {

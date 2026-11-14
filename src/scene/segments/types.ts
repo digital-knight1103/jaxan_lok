@@ -32,6 +32,8 @@ export interface SegmentDef {
   render(layers: SegmentLayers, seed: number): void;
   /** Animacje za pociągiem (x = ekranowy x początku segmentu). */
   animate?(ctx: CanvasRenderingContext2D, x: number, env: SegmentEnv, seed: number): void;
+  /** Animacje pierwszego planu pod torem (np. falujące zboże) – po warstwie bed, przed nakładką nocy. */
+  animateBed?(ctx: CanvasRenderingContext2D, x: number, env: SegmentEnv, seed: number): void;
   /** Źródła światła w nocy – rysowane po nakładce nocy. */
   lights?(ctx: CanvasRenderingContext2D, x: number, env: SegmentEnv, seed: number): void;
   /** x leja załadowczego względem początku segmentu (kopalnia). */

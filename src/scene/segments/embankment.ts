@@ -9,7 +9,7 @@ export const embankment: SegmentDef = {
   id: 'embankment',
   kind: 'filler',
   width: WIDTH,
-  weight: 3,
+  weight: 1.5,
   render({ back, bed }, seed) {
     const rnd = mulberry32(seed);
     let x = 20 + Math.floor(rnd() * 60);

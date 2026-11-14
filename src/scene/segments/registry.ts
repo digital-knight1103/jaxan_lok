@@ -12,6 +12,7 @@
 import type { SegmentDef } from './types';
 import type { LandmarkStop } from '../route';
 import { forest } from './forest';
+import { fields } from './fields';
 import { embankment } from './embankment';
 import { bridge } from './bridge';
 import { plant } from './plant';
@@ -21,7 +22,7 @@ import { sokolka } from './sokolka';
 import { wisla } from './wisla';
 import { warszawa } from './warszawa';
 
-export const REGISTRY: SegmentDef[] = [forest, embankment, bridge, plant, quarry, station, sokolka, wisla, warszawa];
+export const REGISTRY: SegmentDef[] = [fields, forest, embankment, bridge, plant, quarry, station, sokolka, wisla, warszawa];
 
 /**
  * Pętla lokalizacji (cyklicznie), między nimi pola i lasy:

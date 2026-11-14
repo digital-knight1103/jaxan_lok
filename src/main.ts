@@ -377,7 +377,7 @@ startLoop(
     world.drawBack(bctx, env);
     drawPoles(bctx, camX);
     drawSignalPosts(bctx, camX, signals.posts);
-    world.drawBed(bctx);
+    world.drawBed(bctx, env);
     drawTrack(bctx, camX);
     applyTint(bctx, night, dayCycle.warmth);
     ctx.drawImage(backCanvas, 0, 0);

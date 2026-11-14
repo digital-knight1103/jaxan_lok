@@ -217,6 +217,26 @@ export const PAL = {
   canopyShade: '#A4ACB6',
   aviationRed: '#FF4040',
 
+  // --- łany pól ---
+  wheatEar: '#FCEBA8',
+  wheatHi: '#F4D67C',
+  wheat: '#E2BC56',
+  wheatShade: '#C09A3C',
+  wheatDark: '#8E6C2A',
+  wheatDeep: '#5E4620',
+  rapeseed: '#F2DA2E',
+  rapeseedShade: '#C6AE1E',
+  fieldGreen: '#86BE4C',
+  fieldGreenShade: '#62A03A',
+  stubble: '#D6BC7C',
+  stubbleShade: '#B09656',
+  soil: '#6E5236',
+  hay: '#DCC484',
+  hayShade: '#A8904E',
+  combine: '#3E8E3A',
+  combineHi: '#6CBC4E',
+  combineShade: '#2A6628',
+
   // --- góry ---
   mountFar: '#7FA6BC',
   mountFarHi: '#A4C4D2',
