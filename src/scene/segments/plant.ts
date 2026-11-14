@@ -89,6 +89,8 @@ export const plant: SegmentDef = {
   kind: 'filler',
   width: WIDTH,
   weight: 1.5,
+  mapIcon: 'plant',
+  mapLabel: 'ZAKŁAD',
   render({ back, bed }, seed) {
     const rnd = mulberry32(seed);
     const L = plantLayout(seed);

@@ -156,6 +156,9 @@ export const station: SegmentDef = {
   kind: 'landmark',
   width: WIDTH,
   weight: 0,
+  mapIcon: 'station',
+  mapLabel: STATION_NAME,
+  mapAnchor: (B0 + B1) >> 1, // dworzec
   render({ back, bed }, seed) {
     const rnd = mulberry32(seed);
     drawPalace(back, rnd);

@@ -74,3 +74,13 @@ describe('Route – generator trasy', () => {
     }
   });
 });
+
+describe('Route.firstX – wykrywanie skoku wstecz', () => {
+  it('po przejechaniu daleko najstarszy trzymany segment jest blisko widoku', () => {
+    const r = new Route(7, registry, ORDER);
+    expect(r.firstX).toBe(0);
+    r.visible(100000, 100640);
+    expect(r.firstX).toBeGreaterThan(90000);
+    expect(r.firstX).toBeLessThanOrEqual(100000);
+  });
+});

@@ -30,6 +30,11 @@ export class Route {
       .filter((d): d is SegmentDef => !!d);
   }
 
+  /** x świata najstarszego trzymanego segmentu. */
+  get firstX(): number {
+    return this.segs.length ? this.segs[0].startX : 0;
+  }
+
   get cachedCount(): number {
     return this.segs.length;
   }

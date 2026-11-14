@@ -83,10 +83,10 @@ tests/*.test.ts
 - `computeViewport(winW: number, winH: number): { scale: number; offsetX: number; offsetY: number }`
 - `createScreen(): { ctx: CanvasRenderingContext2D; buffer: CanvasRenderingContext2D; present(): void; toggleFullscreen(): void; toGame(clientX, clientY): {x,y} }`
 
-- [ ] `npm create vite` (vanilla-ts) w bieżącym katalogu, `npm i -D vitest`; skrypty `dev`, `build`, `test` (`vitest run`).
-- [ ] Test `computeViewport`: `(1920,1080)→{3,0,0}`, `(1366,768)→{2,43,24}`, `(2560,1440)→{4,0,0}`, `(600,300)→scale 1` (nigdy <1), offsety zaokrąglone w dół.
-- [ ] `npm run test` → FAIL; zaimplementuj; → PASS.
-- [ ] `screen.ts`: widoczny canvas na całe okno (devicePixelRatio uwzględnione, by ×3 było fizycznymi pikselami), tło #0E0E12, `present()` kopiuje bufor z `drawImage` w skali całkowitej; resize nasłuchiwany; `F` → Fullscreen API.
+- [x] `npm create vite` (vanilla-ts) w bieżącym katalogu, `npm i -D vitest`; skrypty `dev`, `build`, `test` (`vitest run`).
+- [x] Test `computeViewport`: `(1920,1080)→{3,0,0}`, `(1366,768)→{2,43,24}`, `(2560,1440)→{4,0,0}`, `(600,300)→scale 1` (nigdy <1), offsety zaokrąglone w dół.
+- [x] `npm run test` → FAIL; zaimplementuj; → PASS.
+- [x] `screen.ts`: widoczny canvas na całe okno (devicePixelRatio uwzględnione, by ×3 było fizycznymi pikselami), tło #0E0E12, `present()` kopiuje bufor z `drawImage` w skali całkowitej; resize nasłuchiwany; `F` → Fullscreen API.
 
 ### Task 2: Pętla, niebo, pierwsza warstwa gór
 
@@ -94,11 +94,11 @@ tests/*.test.ts
 
 **Interfejsy:** `clampDt(rawSeconds: number): number` (max 0,1, min 0); `startLoop(update(dt), render())`; `mulberry32(seed): () => number`; `drawSky(ctx, colors)`; `MountainLayer { constructor(seed, factor, palette); draw(ctx, worldX) }` – profil gór generowany raz, kafel szer. 640 px powtarzany bez szwu.
 
-- [ ] Test `clampDt`: `0.016→0.016`, `5→0.1`, `-1→0`; test `mulberry32(1)` deterministyczny (dwie instancje = te same 5 liczb).
-- [ ] FAIL → implementacja → PASS.
-- [ ] `main.ts`: `worldX += START_KMH*PX_PER_KMH*dt`; niebo gradientowe (kolory z palety, styl.jpg: błękit → turkus przy horyzoncie) + 1 warstwa gór `factor 0.1`.
-- [ ] Weryfikacja E1: `npm run build` przechodzi; `npm run dev`, Playwright 1920×1080 → `screenshots/e1.png`; ostre piksele, brak pasów, brak błędów w konsoli.
-- [ ] Commit `E1: szkielet Vite, skalowanie pikseli, niebo i góry`.
+- [x] Test `clampDt`: `0.016→0.016`, `5→0.1`, `-1→0`; test `mulberry32(1)` deterministyczny (dwie instancje = te same 5 liczb).
+- [x] FAIL → implementacja → PASS.
+- [x] `main.ts`: `worldX += START_KMH*PX_PER_KMH*dt`; niebo gradientowe (kolory z palety, styl.jpg: błękit → turkus przy horyzoncie) + 1 warstwa gór `factor 0.1`.
+- [x] Weryfikacja E1: `npm run build` przechodzi; `npm run dev`, Playwright 1920×1080 → `screenshots/e1.png`; ostre piksele, brak pasów, brak błędów w konsoli.
+- [x] Commit `E1: szkielet Vite, skalowanie pikseli, niebo i góry`.
 
 ---
 
@@ -110,10 +110,10 @@ tests/*.test.ts
 
 **Interfejsy:** `makeSprite(w, h, draw: (ctx) => void): HTMLCanvasElement`; `GLYPHS: Record<string, string[]>` (5 wierszy, szer. 3–5); `drawText(ctx, text, x, y, color)`; `textWidth(text): number`; `getDragon2(): { body: HTMLCanvasElement; wheel: HTMLCanvasElement[] /*klatki obrotu*/; pantograph: HTMLCanvasElement; lightsMask: HTMLCanvasElement }`; `getEamos(load: 0..1): { body; wheel[] }`.
 
-- [ ] Test czcionki: każdy znak z `"KAMIENIEC ZĄBKOWICKI"`, `"JAXAN"`, `"KM/H 0123456789"`, `"ĄĆĘŁŃÓŚŹŻ"` ma glif; `textWidth("JAXAN")` ≤ 30.
-- [ ] FAIL → glify → PASS.
-- [ ] Dragon 2 150×44 (bez pantografu): czarne kabiny o skośnych czołach, magentowy środek z cieniem/blaskiem, szewrony czarny-zielony-czarny przy obu kabinach (skierowane jak na referencji), logo „JAXAN" z X-rombem, kratki wentylacyjne, rama + 2 wózki trzyosiowe, białe drobne napisy, reflektory 2 dolne + 1 górny.
-- [ ] Eamos 96×40: czarne pudło z pionowymi żebrami, zielony pas u góry przechodzący w magentę, „X" zielono-magentowy po prawej, białe tabliczki, magentowe poręcze, bufory, 2 wózki dwuosiowe; ładunek szarego kruszywa z nierównym wierzchem (wysokość zależna od `load`).
+- [x] Test czcionki: każdy znak z `"KAMIENIEC ZĄBKOWICKI"`, `"JAXAN"`, `"KM/H 0123456789"`, `"ĄĆĘŁŃÓŚŹŻ"` ma glif; `textWidth("JAXAN")` ≤ 30.
+- [x] FAIL → glify → PASS.
+- [x] Dragon 2 150×44 (bez pantografu): czarne kabiny o skośnych czołach, magentowy środek z cieniem/blaskiem, szewrony czarny-zielony-czarny przy obu kabinach (skierowane jak na referencji), logo „JAXAN" z X-rombem, kratki wentylacyjne, rama + 2 wózki trzyosiowe, białe drobne napisy, reflektory 2 dolne + 1 górny.
+- [x] Eamos 96×40: czarne pudło z pionowymi żebrami, zielony pas u góry przechodzący w magentę, „X" zielono-magentowy po prawej, białe tabliczki, magentowe poręcze, bufory, 2 wózki dwuosiowe; ładunek szarego kruszywa z nierównym wierzchem (wysokość zależna od `load`).
 
 ### Task 4: Fizyka jazdy i skład
 
@@ -121,11 +121,11 @@ tests/*.test.ts
 
 **Interfejsy:** `stepSpeed(kmh: number, targetKmh: number, dt: number): number` (ACCEL 3 km/h/s, BRAKE 6 km/h/s); `adjustTarget(target: number, delta: number): number` (krok 10, clamp 0–120); `Consist { wagons: number; update(dt, kmh); draw(ctx, screenX) }` – lokomotywa na `TRAIN_X = 230`, wagony ciągnięte w lewo, koła obracają się proporcjonalnie do drogi.
 
-- [ ] Testy: rośnie do celu bez przestrzelenia; maleje do 0 i nie spada poniżej; 60×`dt=1/60` ≈ 1×`dt=1` (±0,01); `adjustTarget(115,+10)=120`, `adjustTarget(5,-10)=0`.
-- [ ] FAIL → implementacja → PASS.
-- [ ] Rysowanie składu na torze w `main.ts`; tor przewija się z `worldX`.
-- [ ] Weryfikacja E2: build, Playwright → `screenshots/e2.png`; porównaj z `reference/dragon2_jaxan.png` i `eamos_jaxan.png` (czytelność JAXAN, szewrony, proporcje); popraw sprite'y, jeśli trzeba.
-- [ ] Commit `E2: lokomotywa Dragon 2 JAXAN i węglarki Eamos`.
+- [x] Testy: rośnie do celu bez przestrzelenia; maleje do 0 i nie spada poniżej; 60×`dt=1/60` ≈ 1×`dt=1` (±0,01); `adjustTarget(115,+10)=120`, `adjustTarget(5,-10)=0`.
+- [x] FAIL → implementacja → PASS.
+- [x] Rysowanie składu na torze w `main.ts`; tor przewija się z `worldX`.
+- [x] Weryfikacja E2: build, Playwright → `screenshots/e2.png`; porównaj z `reference/dragon2_jaxan.png` i `eamos_jaxan.png` (czytelność JAXAN, szewrony, proporcje); popraw sprite'y, jeśli trzeba.
+- [x] Commit `E2: lokomotywa Dragon 2 JAXAN i węglarki Eamos`.
 
 ---
 
@@ -137,8 +137,8 @@ tests/*.test.ts
 
 **Interfejsy:** `CloudLayer { update(dt); draw(ctx, worldX) }` (stała liczba chmur, zawijane); `CatenaryLayer.draw(ctx, worldX)` (słup co 120 px, przewód jezdny ~ `TRACK_Y-58`, lekko zwisający); `nature.ts`: `getTree(variant)`, `getBush(variant)`, `getGrassStrip()`.
 
-- [ ] Kolejność i współczynniki: góry 0,05 i 0,1; chmury 0,15 + własny dryf; średni plan 0,4; sieć i tor 1,0; pierwszy plan 1,3.
-- [ ] Pantograf styka się z przewodem jezdnym (dopasuj wysokość).
+- [x] Kolejność i współczynniki: góry 0,05 i 0,1; chmury 0,15 + własny dryf; średni plan 0,4; sieć i tor 1,0; pierwszy plan 1,3.
+- [x] Pantograf styka się z przewodem jezdnym (dopasuj wysokość).
 
 ### Task 6: Generator trasy i segmenty
 
@@ -159,20 +159,20 @@ class Route { constructor(seed: number, registry: SegmentDef[]); visible(x0: num
 ```
 Opowieść: po landmarku dokładane są fillery aż do `LANDMARK_SPACING_PX`, potem następny landmark z cyklu `['quarry','station']`; dwa mosty nigdy pod rząd.
 
-- [ ] Testy: deterministyczny dla seeda; segmenty ciągłe (`startX` następnego = koniec poprzedniego); landmarki na zmianę i w odstępie ≥ `LANDMARK_SPACING_PX`; brak dwóch `bridge` pod rząd; po `visible(1e8, 1e8+640)` → `cachedCount ≤ 16` (pamięć ograniczona).
-- [ ] FAIL → implementacja (segmenty za lewą krawędzią usuwane) → PASS.
-- [ ] Fillery: las, nasyp z krzakami, **stalowy most łukowy nad doliną** (jak styl.jpg), zakład przemysłowy z kominami (dym z kominów OK), silosy, okna.
-- [ ] Weryfikacja E3: build, Playwright → `screenshots/e3.png` (kadr z mostem); porównaj kompozycję ze `styl.jpg`.
-- [ ] Commit `E3: paralaksa, generator trasy, most i sieć trakcyjna`.
+- [x] Testy: deterministyczny dla seeda; segmenty ciągłe (`startX` następnego = koniec poprzedniego); landmarki na zmianę i w odstępie ≥ `LANDMARK_SPACING_PX`; brak dwóch `bridge` pod rząd; po `visible(1e8, 1e8+640)` → `cachedCount ≤ 16` (pamięć ograniczona).
+- [x] FAIL → implementacja (segmenty za lewą krawędzią usuwane) → PASS.
+- [x] Fillery: las, nasyp z krzakami, **stalowy most łukowy nad doliną** (jak styl.jpg), zakład przemysłowy z kominami (dym z kominów OK), silosy, okna.
+- [x] Weryfikacja E3: build, Playwright → `screenshots/e3.png` (kadr z mostem); porównaj kompozycję ze `styl.jpg`.
+- [x] Commit `E3: paralaksa, generator trasy, most i sieć trakcyjna`.
 
 ### Task 7: Landmarki – kopalnia i stacja Kamieniec Ząbkowicki
 
 **Pliki:** `src/sprites/quarry.ts`, `src/sprites/station.ts`, `src/scene/segments/quarry.ts`, `src/scene/segments/station.ts`, `registry.ts`
 
-- [ ] Kopalnia (szer. ~900 px): tarasowe ściany wyrobiska szaro-beżowe, koparka, wywrotki, przenośnik taśmowy z sypiącym się kruszywem na hałdę, lej nad torem (`hopperX`).
-- [ ] Stacja (szer. ~800 px): peron, wiata, budynek dworca, lampy, tablica „KAMIENIEC ZĄBKOWICKI" (`drawText`), w tle sylwetka pałacu Marianny Orańskiej (neogotyk, wieżyczki).
-- [ ] Rejestracja w `registry.ts`; zapisz w komentarzu na górze pliku, jak dodać nowy landmark.
-- [ ] Zrzut kontrolny obu landmarków (ustaw `worldX` ręcznie) → `screenshots/e3-landmarki.png`; commit `E3: kopalnia i stacja Kamieniec Ząbkowicki`.
+- [x] Kopalnia (szer. ~900 px): tarasowe ściany wyrobiska szaro-beżowe, koparka, wywrotki, przenośnik taśmowy z sypiącym się kruszywem na hałdę, lej nad torem (`hopperX`).
+- [x] Stacja (szer. ~800 px): peron, wiata, budynek dworca, lampy, tablica „KAMIENIEC ZĄBKOWICKI" (`drawText`), w tle sylwetka pałacu Marianny Orańskiej (neogotyk, wieżyczki).
+- [x] Rejestracja w `registry.ts`; zapisz w komentarzu na górze pliku, jak dodać nowy landmark.
+- [x] Zrzut kontrolny obu landmarków (ustaw `worldX` ręcznie) → `screenshots/e3-landmarki.png`; commit `E3: kopalnia i stacja Kamieniec Ząbkowicki`.
 
 ---
 
@@ -191,20 +191,20 @@ bindInput(target: HTMLElement, onAction: (a: Action) => void, onActivity: () => 
 class IdleTracker { constructor(timeoutMs: number); touch(nowMs: number): void; isIdle(nowMs: number): boolean }
 class AudioEngine { unlock(): void; setMuted(m: boolean): void; update(kmh: number, braking: boolean): void; hornStart(): void; hornStop(): void }
 ```
-- [ ] Testy: `IdleTracker(3000)` – `touch(0)`, `isIdle(2999)=false`, `isIdle(3000)=true`; `AudioEngine` w środowisku bez `AudioContext` (node): wszystkie metody bez wyjątku przed `unlock()`.
-- [ ] FAIL → implementacja → PASS.
-- [ ] `input.ts`: zdarzenia `keydown` z `repeat=true` ignorowane; `H` keydown/keyup → horn-down/up; klik/dotyk w prostokąt lokomotywy → horn; każde zdarzenie → `onActivity` i `audio.unlock()`.
-- [ ] Audio: stukot kół (2 uderzenia na złącze co 25 m wizualnie → tempo ∝ prędkość), szum silników (oscylator + filtr, ton rośnie z prędkością), trąbienie 370+466 Hz z narastaniem/wygaszaniem, pisk hamulców przy hamowaniu < 40 km/h. Start: `muted = true`.
-- [ ] Bezczynność 180 s → `running=true`, `targetKmh=START_KMH`, `dayAuto=true`.
+- [x] Testy: `IdleTracker(3000)` – `touch(0)`, `isIdle(2999)=false`, `isIdle(3000)=true`; `AudioEngine` w środowisku bez `AudioContext` (node): wszystkie metody bez wyjątku przed `unlock()`.
+- [x] FAIL → implementacja → PASS.
+- [x] `input.ts`: zdarzenia `keydown` z `repeat=true` ignorowane; `H` keydown/keyup → horn-down/up; klik/dotyk w prostokąt lokomotywy → horn; każde zdarzenie → `onActivity` i `audio.unlock()`.
+- [x] Audio: stukot kół (2 uderzenia na złącze co 25 m wizualnie → tempo ∝ prędkość), szum silników (oscylator + filtr, ton rośnie z prędkością), trąbienie 370+466 Hz z narastaniem/wygaszaniem, pisk hamulców przy hamowaniu < 40 km/h. Start: `muted = true`.
+- [x] Bezczynność 180 s → `running=true`, `targetKmh=START_KMH`, `dayAuto=true`.
 
 ### Task 9: HUD
 
 **Pliki:** `src/ui/hud.ts`
 
-- [ ] HUD rysowany w buforze 640×360 czcionką pikselową, barwy JAXAN: prędkościomierz (aktualna/zadana), przyciski 📯 ☀/🌙 ▶/⏸ − + (suwak jako 2 przyciski + pasek), 🔊/🔇, ⛶ – ikony jako mini-sprite'y pikselowe (nie emoji).
-- [ ] Klik/dotyk przez `screen.toGame()`; HUD i kursor chowają się po 4 s / 3 s bezczynności.
-- [ ] Iskry spod kół przy hamowaniu (`src/scene/sparks.ts` na puli z Zad. 11 – tu prosta wersja z tablicą o stałej pojemności 64).
-- [ ] Weryfikacja E4: build; ręcznie: H, Spacja, ←/→, M, F, klik w lokomotywę, dotyk (Playwright emulacja mobilna); Playwright → `screenshots/e4.png`; commit `E4: sterowanie, HUD i dźwięk`.
+- [x] HUD rysowany w buforze 640×360 czcionką pikselową, barwy JAXAN: prędkościomierz (aktualna/zadana), przyciski 📯 ☀/🌙 ▶/⏸ − + (suwak jako 2 przyciski + pasek), 🔊/🔇, ⛶ – ikony jako mini-sprite'y pikselowe (nie emoji).
+- [x] Klik/dotyk przez `screen.toGame()`; HUD i kursor chowają się po 4 s / 3 s bezczynności.
+- [x] Iskry spod kół przy hamowaniu (`src/scene/sparks.ts` na puli z Zad. 11 – tu prosta wersja z tablicą o stałej pojemności 64).
+- [x] Weryfikacja E4: build; ręcznie: H, Spacja, ←/→, M, F, klik w lokomotywę, dotyk (Playwright emulacja mobilna); Playwright → `screenshots/e4.png`; commit `E4: sterowanie, HUD i dźwięk`.
 
 ---
 
@@ -220,11 +220,11 @@ lerpColor(a: string, b: string, t: number): string           // '#rrggbb'
 class DayCycle { t: number /*0=północ,0.5=południe*/; auto: boolean;
   update(dt: number): void; toggleManual(): void; get night(): number; skyColors(): { top: string; horizon: string } }
 ```
-- [ ] Testy: `lerpColor('#000000','#ffffff',0.5)='#808080'`; `night` przy `t=0` = 1, `t=0.5` = 0, ciągłe (różnica dla `t` co 0,001 < 0,05); auto: 480 s `update` = pełny obieg; `toggleManual()` w dzień → po 3 s `night=1`, `auto=false`.
-- [ ] FAIL → implementacja → PASS.
-- [ ] Oświetlenie: nakładka przyciemniająca (multiply kolorem nocnym), gwiazdy, księżyc, okna zakładu/stacji, lampy peronowe, reflektory lokomotywy ze stożkiem na torze (rysowane po nakładce, `lighter`), ciepłe barwy zachodu/wschodu.
-- [ ] Iskry z pantografu w nocy (losowo, częściej przy dużej prędkości).
-- [ ] Weryfikacja E5: build; Playwright → `screenshots/e5-noc.png` i `e5-zachod.png`; commit `E5: cykl dobowy i oświetlenie`.
+- [x] Testy: `lerpColor('#000000','#ffffff',0.5)='#808080'`; `night` przy `t=0` = 1, `t=0.5` = 0, ciągłe (różnica dla `t` co 0,001 < 0,05); auto: 480 s `update` = pełny obieg; `toggleManual()` w dzień → po 3 s `night=1`, `auto=false`.
+- [x] FAIL → implementacja → PASS.
+- [x] Oświetlenie: nakładka przyciemniająca (multiply kolorem nocnym), gwiazdy, księżyc, okna zakładu/stacji, lampy peronowe, reflektory lokomotywy ze stożkiem na torze (rysowane po nakładce, `lighter`), ciepłe barwy zachodu/wschodu.
+- [x] Iskry z pantografu w nocy (losowo, częściej przy dużej prędkości).
+- [x] Weryfikacja E5: build; Playwright → `screenshots/e5-noc.png` i `e5-zachod.png`; commit `E5: cykl dobowy i oświetlenie`.
 
 ---
 
@@ -236,13 +236,13 @@ class DayCycle { t: number /*0=północ,0.5=południe*/; auto: boolean;
 
 **Interfejsy:** `class Pool<T> { constructor(capacity: number, make: () => T); spawn(): T | null; forEach(fn); update(dt, isDead: (p: T) => boolean) ; get alive(): number }`
 
-- [ ] Test: `Pool(64)` – 1000× `spawn()` → `alive ≤ 64`, nadmiar zwraca `null`; martwe wracają do puli.
-- [ ] FAIL → implementacja → PASS; iskry, dym kominów, kruszywo i ptaki przechodzą na `Pool`.
-- [ ] Drgania wagonów (±1 px z przesunięciem fazy), kołysanie przewodu, ptaki na drzewach zrywające się na trąbienie, kamera „pływa" (±6 px) przy przyspieszaniu/hamowaniu.
-- [ ] Test wytrzymałości: tryb `?soak` w `main.ts` – symulacja 8 h (`update` w pętli bez renderu, dt=1/60) → log liczby segmentów i cząsteczek; muszą być stałe. Uruchom w Playwright, sprawdź log.
-- [ ] Profil w Chrome: stabilne 60 FPS przy 6 wagonach w nocy.
-- [ ] `README.md` po polsku: uruchomienie, sterowanie, jak dodać segment/landmark.
-- [ ] Weryfikacja E6: build, test, Playwright → `screenshots/e6.png`; Firefox (Playwright firefox) bez błędów; commit `E6: dopracowanie, ptaki, iskry, README`.
+- [x] Test: `Pool(64)` – 1000× `spawn()` → `alive ≤ 64`, nadmiar zwraca `null`; martwe wracają do puli.
+- [x] FAIL → implementacja → PASS; iskry, dym kominów, kruszywo i ptaki przechodzą na `Pool`.
+- [x] Drgania wagonów (±1 px z przesunięciem fazy), kołysanie przewodu, ptaki na drzewach zrywające się na trąbienie, kamera „pływa" (±6 px) przy przyspieszaniu/hamowaniu.
+- [x] Test wytrzymałości: tryb `?soak` w `main.ts` – symulacja 8 h (`update` w pętli bez renderu, dt=1/60) → log liczby segmentów i cząsteczek; muszą być stałe. Uruchom w Playwright, sprawdź log.
+- [x] Profil w Chrome: stabilne 60 FPS przy 6 wagonach w nocy.
+- [x] `README.md` po polsku: uruchomienie, sterowanie, jak dodać segment/landmark.
+- [x] Weryfikacja E6: build, test, Playwright → `screenshots/e6.png`; Firefox (Playwright firefox) bez błędów; commit `E6: dopracowanie, ptaki, iskry, README`.
 
 ---
 
@@ -256,3 +256,28 @@ Każdy punkt osobno: implementacja → build → zrzut → commit.
 - [ ] **Liczba wagonów `+`/`-`** (1–12, test clamp).
 - [ ] **Licznik km i ton** w `localStorage` (try/catch, zapis co 10 s).
 - [ ] **Tryb kinowy `C`**: HUD ukryty, powolny zoom całkowity (×1 ↔ ×2 wycinka bufora).
+
+---
+
+## Poprawki po MVP (2026-11-14) – zrobione
+
+MVP zaakceptowane. Trzy poprawki, każda osobnym commitem.
+
+- [x] **Grafika v2** – porównanie zrzutów 1920×1080 (dzień/noc) z `reference/styl.jpg`, 6 ulepszeń:
+  chmury cumulus (warstwowe kłęby, jasny brzeg, płaski niebiesko‑szary spód, bez szumu); góry z fasetami
+  (jasna lewa ściana / cień za linią od szczytu), mgiełka ku podstawie, trzecie najdalsze pasmo;
+  trawa ze skośnymi źdźbłami i refleksami, krzaki/korony z kępek liści (`drawFoliage`); wzgórza 3‑tonowe
+  z mgiełką; most: cień pomostu (3 stopnie), mgiełka w dolinie, kratownica z refleksem, spoiny filarów;
+  tor w perspektywie (tłuczeń z wierzchu, podkłady‑trapezy, błysk szyny); tabor: połysk lakieru, nity,
+  cień składu na tłuczniu, koła 8 klatek ze znacznikiem obrotu i błyskiem obręczy.
+  Dragon 2 nie ma korbowodów (napęd indywidualny) – zamiast nich wyraźny obrót piast.
+  Wydajność bez zmian: wszystko prerenderowane, max klatka 13,5 ms.
+- [x] **Dźwięk** – silniki ~60% ciszej, dwa filtry dolnoprzepustowe w szeregu, ton rośnie łagodnie
+  (gwizd ≤ ~380 Hz); stukot i klakson bez zmian; wszystkie poziomy w `config.ts` → `AUDIO`;
+  test `tests/audio-levels.test.ts` (`motorParams`).
+- [x] **Mapa trasy** – pasek na dole (±10 km, 1 km = 3600·PX_PER_KMH px), ikony stacji/kopalni,
+  znaczniki mostów/zakładów, przeciąganie, klik w punkt / `[` `]` = szybki przejazd (rozmycie +
+  ściemnienie 0,5 s, dojazd z hamowaniem 3 s, postój przy punkcie). Chowa się z HUD.
+  `RouteIndex` (deterministyczna kopia generatora, pamięć ograniczona), `TravelAnim`, skok wstecz
+  odbudowuje trasę z seeda (`World.prepare` + `Route.firstX`). Testy: `routeindex.test.ts`,
+  `travel.test.ts`, `route.test.ts` (firstX).

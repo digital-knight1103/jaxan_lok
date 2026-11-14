@@ -146,6 +146,9 @@ export const quarry: SegmentDef = {
   width: WIDTH,
   weight: 0,
   hopperX: HOPPER_X,
+  mapIcon: 'quarry',
+  mapLabel: 'KOPALNIA KRUSZYWA',
+  mapAnchor: HOPPER_X,
   render({ back, bed, front }, seed) {
     const rnd = mulberry32(seed);
     drawWall(back, rnd);

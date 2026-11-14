@@ -28,6 +28,8 @@ export const bridge: SegmentDef = {
   kind: 'filler',
   width: WIDTH,
   bridge: true,
+  mapIcon: 'bridge',
+  mapLabel: 'MOST',
   weight: 2,
   render({ back, bed }, seed) {
     const rnd = mulberry32(seed);

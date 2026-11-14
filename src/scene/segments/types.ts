@@ -36,7 +36,15 @@ export interface SegmentDef {
   lights?(ctx: CanvasRenderingContext2D, x: number, env: SegmentEnv, seed: number): void;
   /** x leja załadowczego względem początku segmentu (kopalnia). */
   hopperX?: number;
+  /** Ikona na mapie trasy (brak = segment nie pojawia się na mapie). */
+  mapIcon?: MapIcon;
+  /** Podpis na mapie (np. nazwa stacji). */
+  mapLabel?: string;
+  /** Punkt segmentu (px od początku), przy którym zatrzymuje się szybki przejazd; domyślnie środek. */
+  mapAnchor?: number;
 }
+
+export type MapIcon = 'station' | 'quarry' | 'bridge' | 'plant';
 
 /** Segment umieszczony na trasie. */
 export interface Placed {

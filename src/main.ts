@@ -1,6 +1,6 @@
 // JAXAN Express – start i sklejenie modułów: stan, wejście, pętla, rysowanie warstw.
 import {
-  START_KMH, PX_PER_KMH, TRACK_Y, W, H, CURSOR_HIDE_MS, HUD_HIDE_MS, AUTO_RESUME_MS,
+  START_KMH, PX_PER_KMH, TRACK_Y, W, H, ROUTE_SEED, CURSOR_HIDE_MS, HUD_HIDE_MS, AUTO_RESUME_MS,
 } from './config';
 import { PAL } from './palette';
 import { initialState } from './state';
@@ -22,6 +22,10 @@ import { World } from './scene/world';
 import { Consist } from './train/consist';
 import { stepSpeed, adjustTarget } from './train/physics';
 import { Hud } from './ui/hud';
+import { RouteMap } from './ui/routemap';
+import { RouteIndex, ANCHOR_SCREEN_X, stopWorldX, type Poi } from './scene/routeindex';
+import { TravelAnim, type TravelFrame } from './scene/travel';
+import { REGISTRY, LANDMARK_ORDER } from './scene/segments/registry';
 import { DayCycle } from './scene/daycycle';
 import { Celestial } from './scene/celestial';
 import { LOCO_H, PANTO_CONTACT } from './sprites/dragon2';
@@ -99,6 +103,24 @@ const sparks = new Sparks();
 const hud = new Hud();
 const audio = new AudioEngine();
 const birds = new Birds(Math.floor(worldX));
+// mapa trasy: osobny, deterministyczny indeks punktów (ten sam seed co trasa)
+const routeIndex = new RouteIndex(ROUTE_SEED, REGISTRY, LANDMARK_ORDER);
+const routeMap = new RouteMap(routeIndex);
+const travel = new TravelAnim();
+let travelFx: TravelFrame | null = null;
+let travelTarget = 0;
+
+/** Pozycja „odniesienia" pociągu na trasie (ta sama, co kotwice punktów). */
+function trainRef(): number {
+  return worldX + ANCHOR_SCREEN_X;
+}
+
+/** Szybki przejazd do punktu – pociąg zatrzyma się przy nim. */
+function jumpTo(p: Poi | null): void {
+  if (!p) return;
+  travelTarget = stopWorldX(p);
+  travel.start(worldX, travelTarget);
+}
 
 // --- bezczynność: kursor, HUD, powrót do automatu ---
 const cursorIdle = new IdleTracker(CURSOR_HIDE_MS);
@@ -143,6 +165,13 @@ function action(a: Action): void {
     case 'fullscreen':
       screen.toggleFullscreen();
       break;
+    case 'poi-next':
+    case 'poi-prev': {
+      // w trakcie przejazdu liczymy od celu – można „przeskakiwać" kilka punktów
+      const ref = travel.active ? travelTarget + ANCHOR_SCREEN_X : trainRef();
+      jumpTo(a === 'poi-next' ? routeIndex.next(ref) : routeIndex.prev(ref));
+      break;
+    }
     default:
       break; // etap 2
   }
@@ -159,6 +188,7 @@ bindInput(screen.canvas, {
   },
   onPointerDown(cx, cy) {
     const p = screen.toGame(cx, cy);
+    if (hud.alpha >= 0.5 && routeMap.pointerDown(p.x, p.y)) return;
     const hit = hud.hit(p.x, p.y);
     if (hit && 'action' in hit) {
       action(hit.action);
@@ -179,11 +209,17 @@ bindInput(screen.canvas, {
     }
     // każdy inny dotyk tylko pokazuje HUD (onActivity)
   },
-  onPointerUp() {
+  onPointerMove(cx, cy) {
+    const p = screen.toGame(cx, cy);
+    routeMap.pointerMove(p.x, p.y, trainRef());
+  },
+  onPointerUp(cx) {
     if (pointerHorn) {
       pointerHorn = false;
       action('horn-up');
     }
+    // krótkie kliknięcie w punkt na mapie = szybki przejazd do niego
+    jumpTo(routeMap.pointerUp(screen.toGame(cx, 0).x, trainRef()));
   },
 });
 
@@ -194,9 +230,22 @@ function simulate(dt: number): void {
   time += dt;
   dayCycle.update(dt);
   const prev = state.kmh;
-  state.kmh = stepSpeed(state.kmh, state.running ? state.targetKmh : 0, dt);
-  braking = state.kmh < prev - 1e-9;
-  worldX += state.kmh * PX_PER_KMH * dt;
+  if (travel.active) {
+    // szybki przejazd steruje pozycją i prędkością; na końcu pociąg stoi
+    travelFx = travel.update(dt, worldX);
+    worldX = travelFx.worldX;
+    state.kmh = travelFx.kmh;
+    braking = travelFx.phase === 'in';
+    if (travelFx.done) {
+      state.running = false;
+      travelFx = null;
+    }
+  } else {
+    state.kmh = stepSpeed(state.kmh, state.running ? state.targetKmh : 0, dt);
+    braking = state.kmh < prev - 1e-9;
+    worldX += state.kmh * PX_PER_KMH * dt;
+  }
+  routeMap.update(dt);
   consist.update(dt, state.kmh);
   // „pływająca" kamera: pociąg lekko wysuwa się przy przyspieszaniu, cofa przy hamowaniu
   const accel = dt > 0 ? (state.kmh - prev) / dt : 0;
@@ -248,7 +297,7 @@ startLoop(
   (dt) => {
     const now = performance.now();
     document.body.classList.toggle('hide-cursor', cursorIdle.isIdle(now));
-    hud.update(dt, !hudIdle.isIdle(now));
+    hud.update(dt, !hudIdle.isIdle(now) || routeMap.dragging);
     // po kilku minutach bez dotykania scena wraca do jazdy automatycznej
     if (autoIdle.isIdle(now)) {
       state.running = true;
@@ -299,11 +348,34 @@ startLoop(
     consist.drawLights(ctx, night);
     sparks.draw(ctx);
 
-    // 5. HUD
+    // 5. szybki przejazd: rozmycie ruchu (smugi) i ściemnienie
+    if (travelFx && travelFx.blur > 0) {
+      const dir = travelTarget >= worldX ? 1 : -1; // krajobraz ucieka w lewo przy jeździe do przodu
+      for (const [dx, a] of [[8, 0.5], [18, 0.35], [32, 0.2]] as const) {
+        ctx.globalAlpha = a * travelFx.blur;
+        ctx.drawImage(ctx.canvas, dir * dx, 0);
+      }
+      ctx.globalAlpha = 0.5 * travelFx.blur;
+      ctx.fillStyle = PAL.white;
+      for (let i = 0; i < 14; i++) {
+        const y = (i * 53 + Math.floor(time * 400)) % H;
+        ctx.fillRect(((i * 97) % W) - 40, y, 60 + (i % 3) * 30, 1);
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (travelFx && travelFx.fade > 0) {
+      ctx.globalAlpha = Math.min(1, travelFx.fade) * 0.95;
+      ctx.fillStyle = PAL.letterbox;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+
+    // 6. HUD i mapa trasy (chowają się razem)
     hud.draw(ctx, {
       kmh: state.kmh, targetKmh: state.targetKmh, running: state.running,
       night: night > 0.5, muted: state.muted, horn: state.horn,
     });
+    routeMap.draw(ctx, trainRef(), hud.alpha);
     screen.present();
   },
 );
@@ -314,6 +386,10 @@ if (import.meta.env.DEV) {
     ([{ Route }, { REGISTRY, LANDMARK_ORDER }, { ROUTE_SEED }]) => {
       (window as unknown as Record<string, unknown>).__jx = {
         state,
+        travel,
+        get worldX() {
+          return worldX;
+        },
         /** x świata początku n-tego segmentu o danym id. */
         find(id: string, nth = 0): number {
           const r = new Route(ROUTE_SEED, REGISTRY, LANDMARK_ORDER);

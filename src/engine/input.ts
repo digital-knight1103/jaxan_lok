@@ -3,7 +3,8 @@
 
 export type Action =
   | 'horn-down' | 'horn-up' | 'toggle-night' | 'toggle-run' | 'faster' | 'slower'
-  | 'toggle-mute' | 'fullscreen' | 'weather' | 'cinema' | 'wagon-add' | 'wagon-remove';
+  | 'toggle-mute' | 'fullscreen' | 'weather' | 'cinema' | 'wagon-add' | 'wagon-remove'
+  | 'poi-prev' | 'poi-next';
 
 const KEYS: Record<string, Action> = {
   KeyH: 'horn-down',
@@ -19,6 +20,8 @@ const KEYS: Record<string, Action> = {
   NumpadAdd: 'wagon-add',
   Minus: 'wagon-remove',
   NumpadSubtract: 'wagon-remove',
+  BracketLeft: 'poi-prev',
+  BracketRight: 'poi-next',
 };
 
 export interface InputHandlers {
@@ -27,7 +30,9 @@ export interface InputHandlers {
   onActivity(): void;
   /** Wciśnięcie wskaźnika (mysz/dotyk) – współrzędne clientX/Y. */
   onPointerDown(clientX: number, clientY: number): void;
-  onPointerUp(): void;
+  /** Ruch wskaźnika (przeciąganie mapy, podświetlenie punktów). */
+  onPointerMove(clientX: number, clientY: number): void;
+  onPointerUp(clientX: number, clientY: number): void;
 }
 
 export function bindInput(target: HTMLElement, h: InputHandlers): void {
@@ -49,7 +54,10 @@ export function bindInput(target: HTMLElement, h: InputHandlers): void {
     h.onActivity();
     h.onPointerDown(e.clientX, e.clientY);
   });
-  window.addEventListener('pointerup', () => h.onPointerUp());
-  window.addEventListener('pointercancel', () => h.onPointerUp());
-  window.addEventListener('pointermove', () => h.onActivity());
+  window.addEventListener('pointerup', (e) => h.onPointerUp(e.clientX, e.clientY));
+  window.addEventListener('pointercancel', (e) => h.onPointerUp(e.clientX, e.clientY));
+  window.addEventListener('pointermove', (e) => {
+    h.onActivity();
+    h.onPointerMove(e.clientX, e.clientY);
+  });
 }

@@ -29,8 +29,17 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
 | Prędkość −/+ 10 km/h (0–120) | `←` / `→` | przyciski « » lub klik w pasek prędkości |
 | Dźwięk wł./wył. | `M` | przycisk głośnika |
 | Pełny ekran | `F` | przycisk ⛶ |
+| Skok do poprzedniego / następnego punktu trasy | `[` / `]` | klik w ikonę na mapie trasy |
+| Przewijanie podglądu mapy | – | przeciągnij pasek mapy myszą lub palcem |
 
+- **Mapa trasy** (pasek na dole) pokazuje pociąg i punkty w promieniu ±10 km: stację Kamieniec
+  Ząbkowicki 🏠, kopalnię ⛏ (pełne ikony) oraz mosty i zakłady (małe znaczniki – pełna ikona po najechaniu).
+  Nad paskiem widać nazwę i odległość najbliższej stacji/kopalni (albo punktu pod kursorem).
+  Kliknięcie punktu albo `[` / `]` = szybki przejazd: krajobraz mknie z rozmyciem i ściemnia się,
+  potem pociąg dojeżdża i **zatrzymuje się** przy punkcie (Spacja – jazda dalej). Wciskając `]` kilka razy
+  w trakcie przejazdu, przeskakuje się o kolejne punkty. Podgląd po przeciągnięciu wraca do pociągu po 5 s.
 - **Dźwięk jest domyślnie wyłączony** (biuro) – włącz go `M`. Trąbienie płoszy ptaki także bez dźwięku.
+  Wszystkie poziomy głośności (silniki, stukot, klakson, pisk) są w `src/config.ts` → `AUDIO`.
 - HUD chowa się po 4 s bezczynności, kursor po 3 s. Pierwszy dotyk tylko pokazuje HUD.
 - Po **3 minutach bez dotykania** scena wraca do trybu „samograja”: jazda 80 km/h i automatyczny
   cykl dobowy (pełna doba = 8 minut).
@@ -58,6 +67,9 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
      },
      // opcjonalnie: animate(ctx, x, env, seed) – ruch (dym, taśmy) co klatkę
      // opcjonalnie: lights(ctx, x, env, seed) – światła w nocy (env.night 0..1)
+     // opcjonalnie – pokaż na mapie trasy:
+     // mapIcon: 'bridge' | 'plant' | 'station' | 'quarry', mapLabel: 'JEZIORO',
+     // mapAnchor: 320   // px od początku segmentu, przy którym staje szybki przejazd (domyślnie środek)
    };
    ```
 
@@ -81,6 +93,9 @@ src/scene/segments/  odcinki trasy: las, nasyp, most, zakład, kopalnia, stacja
 src/sprites/         lokomotywa Dragon 2, węglarka Eamos, koła, drzewa
 src/train/           fizyka jazdy i skład
 src/ui/hud.ts        panel sterowania
+src/ui/routemap.ts   mapa trasy (pasek na dole)
+src/scene/routeindex.ts  punkty trasy dla mapy (deterministyczny generator, ten sam seed)
+src/scene/travel.ts  animacja szybkiego przejazdu do punktu
 ```
 
 ## Parametry diagnostyczne (adres strony)

@@ -13,7 +13,7 @@ interface Item { p: Placed; x: number; r: Rendered }
 const LOOKAHEAD = 640;
 
 export class World {
-  readonly route = new Route(ROUTE_SEED, REGISTRY, LANDMARK_ORDER);
+  route = new Route(ROUTE_SEED, REGISTRY, LANDMARK_ORDER);
   private cache = new Map<number, Rendered>();
   private items: Item[] = [];
 
@@ -31,6 +31,11 @@ export class World {
 
   /** Wywołać raz na klatkę przed rysowaniem. camX = Math.floor(worldX). */
   prepare(camX: number): void {
+    // skok wstecz (mapa trasy): trasa jest deterministyczna – odbudowa z seeda
+    if (camX < this.route.firstX) {
+      this.route = new Route(ROUTE_SEED, REGISTRY, LANDMARK_ORDER);
+      this.cache.clear();
+    }
     // segmenty tuż za prawą krawędzią renderujemy zawczasu (max 1 na klatkę),
     // żeby wjazd nowego odcinka nie powodował przycięcia animacji
     const vis = this.route.visible(camX, camX + W + LOOKAHEAD);
