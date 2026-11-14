@@ -1,8 +1,10 @@
 # JAXAN Express
 
 Pikselowa, zapętlona scena kolejowa na ekran w biurze: lokomotywa **Newag Dragon 2 w barwach JAXAN**
-ciągnie węglarki **Eamos JAXAN** z kruszywem przez nieskończony krajobraz – lasy, stalowe mosty,
-zakłady przemysłowe, **kopalnię kamienia** i **stację Kamieniec Ząbkowicki**.
+ciągnie węglarki **Eamos JAXAN** z kruszywem przez nieskończony krajobraz – złote łany pól, lasy,
+stalowe mosty i zakłady – po pętli **Sokółka** (stacja + żwirownia) → **most na Wiśle i Warszawa**
+(panorama z Pałacem Kultury, Varso, Złotą 44) → **Kamieniec Ząbkowicki** (kamieniołom + stacja) → Sokółka…
+Przed każdą stacją stoją **semafory świetlne PKP**.
 
 Vite + TypeScript + Canvas 2D, zero zależności w czasie działania. Grafika i dźwięk generowane w kodzie.
 
@@ -33,11 +35,20 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
 | Przewijanie podglądu mapy | – | przeciągnij pasek mapy myszą lub palcem |
 
 - **Mapa trasy** (pasek na dole) pokazuje pociąg i punkty w promieniu ±10 km: stację Kamieniec
-  Ząbkowicki 🏠, kopalnię ⛏ (pełne ikony) oraz mosty i zakłady (małe znaczniki – pełna ikona po najechaniu).
+  Ząbkowicki 🏠, kopalnię ⛏, Sokółkę (żwirownia), Warszawę (PKiN) – pełne ikony – oraz mosty i zakłady (małe znaczniki – pełna ikona po najechaniu).
   Nad paskiem widać nazwę i odległość najbliższej stacji/kopalni (albo punktu pod kursorem).
   Kliknięcie punktu albo `[` / `]` = szybki przejazd: krajobraz mknie z rozmyciem i ściemnia się,
   potem pociąg dojeżdża i **zatrzymuje się** przy punkcie (Spacja – jazda dalej). Wciskając `]` kilka razy
   w trakcie przejazdu, przeskakuje się o kolejne punkty. Podgląd po przeciągnięciu wraca do pociągu po 5 s.
+- **Semafory**: ok. 1 km przed stacją tarcza ostrzegawcza (pomarańczowe = semafor „stój”,
+  zielone migające = „zwolnij do 40”, zielone = „droga wolna”), przed peronem semafor wjazdowy
+  (zielone / pomarańczowe = 40 km/h / czerwone = stój). Sygnał losowany przy zbliżaniu się pociągu;
+  czerwone po 5–15 s zmienia się na zielone lub pomarańczowe.
+  - **AUTO** (domyślnie i po 3 min bez dotykania): pociąg sam zwalnia, staje przed czerwonym i rusza.
+  - **RĘCZNA** (po użyciu Spacji, `←`/`→` lub paska prędkości): pod panelem HUD podgląd najbliższego
+    sygnału i odległość. Przejechanie czerwonego = alarm **RADIOSTOP**, hamowanie nagłe i komunikat
+    „Przejechanie sygnału STÓJ!”.
+  - Szybki przejazd z mapy omija semafory bez kar. Na mapie semafory to drobne znaczniki w kolorze sygnału.
 - **Dźwięk jest domyślnie wyłączony** (biuro) – włącz go `M`. Trąbienie płoszy ptaki także bez dźwięku.
   Wszystkie poziomy głośności (silniki, stukot, klakson, pisk) są w `src/config.ts` → `AUDIO`.
 - HUD chowa się po 4 s bezczynności, kursor po 3 s. Pierwszy dotyk tylko pokazuje HUD.
@@ -66,16 +77,20 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
        drawGround(bed, 0, 640, rnd);
      },
      // opcjonalnie: animate(ctx, x, env, seed) – ruch (dym, taśmy) co klatkę
+     // opcjonalnie: animateBed(ctx, x, env, seed) – ruch pod torem (falujące zboże)
      // opcjonalnie: lights(ctx, x, env, seed) – światła w nocy (env.night 0..1)
+     // opcjonalnie: signals: true – stacja z semaforami (tarcza 1 km przed + semafor wjazdowy)
      // opcjonalnie – pokaż na mapie trasy:
-     // mapIcon: 'bridge' | 'plant' | 'station' | 'quarry', mapLabel: 'JEZIORO',
+     // mapIcon: 'bridge' | 'plant' | 'station' | 'quarry' | 'gravel' | 'city', mapLabel: 'JEZIORO',
      // mapAnchor: 320   // px od początku segmentu, przy którym staje szybki przejazd (domyślnie środek)
    };
    ```
 
 2. Dodaj go do `REGISTRY` w `src/scene/segments/registry.ts`.
-3. Jeśli to **punkt charakterystyczny** (jak stacja czy kopalnia), ustaw `kind: 'landmark'` i dopisz jego
-   `id` do `LANDMARK_ORDER` – landmarki pojawiają się po kolei co `LANDMARK_SPACING_PX` (`src/config.ts`).
+3. Jeśli to **lokalizacja** (jak stacja czy kopalnia), ustaw `kind: 'landmark'` i dopisz ją do pętli
+   `LANDMARK_ORDER` jako grupę, np. `{ ids: ['wisla', 'warszawa'] }` (segmenty jeden za drugim) albo
+   `{ ids: ['quarry', 'station'], gapPx: 2400 }` (z odstępem). Lokalizacje pojawiają się po kolei, oddzielone
+   co najmniej `LANDMARK_SPACING_PX` pól i lasów (`src/config.ts`; 22000 px ≈ 2,3 min przy 100 km/h).
 
 Kolory dodawaj wyłącznie w `src/palette.ts`. Gotowe pomocniki: `drawGround`, `drawBackStrip`,
 `scatterBushes`, `plantBackItem` (drzewa/choinki/krzaki) w `segments/common.ts`, `drawText` (pikselowa
@@ -89,9 +104,11 @@ src/palette.ts       wszystkie kolory
 src/main.ts          sklejenie modułów, kolejność rysowania warstw
 src/engine/          ekran i skalowanie, pętla, wejście, audio, czcionka, sprite'y, pula cząsteczek
 src/scene/           niebo, góry, chmury, wzgórza, tor, sieć trakcyjna, cykl dobowy, ptaki, iskry
-src/scene/segments/  odcinki trasy: las, nasyp, most, zakład, kopalnia, stacja
+src/scene/segments/  odcinki trasy: pola, las, nasyp, most, zakład; Sokółka, Wisła, Warszawa,
+                     kamieniołom i stacja Kamieniec; stationkit.ts – wspólne elementy stacji
+src/scene/signals.ts rysowanie semaforów i tarcz (światła z poświatą)
 src/sprites/         lokomotywa Dragon 2, węglarka Eamos, koła, drzewa
-src/train/           fizyka jazdy i skład
+src/train/           fizyka jazdy (z hamowaniem nagłym), skład, signals.ts – logika semaforów
 src/ui/hud.ts        panel sterowania
 src/ui/routemap.ts   mapa trasy (pasek na dole)
 src/scene/routeindex.ts  punkty trasy dla mapy (deterministyczny generator, ten sam seed)

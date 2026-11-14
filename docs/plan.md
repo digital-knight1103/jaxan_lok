@@ -252,7 +252,7 @@ Każdy punkt osobno: implementacja → build → zrzut → commit.
 
 - [ ] **Pogoda `W`**: słońce → deszcz → śnieg na `Pool`; mokre odbicia na szynach przy deszczu.
 - [ ] **Załadunek w kopalni**: zatrzymanie z wagonem pod `hopperX` (±12 px) → sypanie kruszywa, `load` 0→1 w 3 s, kolejny wagon wymaga podjechania. Wagony w trasie wracają do „pustych" po stacji (logika w `consist.ts`, test na stan wagonów).
-- [ ] **Semafory**: segment z semaforem; czerwony → wymaga zatrzymania przed nim, w trybie automatu pociąg hamuje sam.
+- [x] **Semafory** – zrobione w poprawkach 2026-11-14 (część 2), patrz niżej.
 - [ ] **Liczba wagonów `+`/`-`** (1–12, test clamp).
 - [ ] **Licznik km i ton** w `localStorage` (try/catch, zapis co 10 s).
 - [ ] **Tryb kinowy `C`**: HUD ukryty, powolny zoom całkowity (×1 ↔ ×2 wycinka bufora).
@@ -281,3 +281,33 @@ MVP zaakceptowane. Trzy poprawki, każda osobnym commitem.
   `RouteIndex` (deterministyczna kopia generatora, pamięć ograniczona), `TravelAnim`, skok wstecz
   odbudowuje trasę z seeda (`World.prepare` + `Route.firstX`). Testy: `routeindex.test.ts`,
   `travel.test.ts`, `route.test.ts` (firstX).
+
+---
+
+## Poprawki 2026-11-14 (część 2) – zrobione
+
+Cztery zmiany, każda osobnym commitem.
+
+- [x] **Szewrony lokomotywy** – lustrzane względem środka: `<` przy lewej kabinie, `>` przy prawej;
+  pasy czarny/zielony/czarny po 4 px; logo JAXAN na środku, kratki symetrycznie, prawa kabina
+  lustrzanie do lewej. Zrzut: `screenshots/p1-szewrony.png`.
+- [x] **Semafory PKP** – `src/train/signals.ts` (czysta logika: losowanie sygnału przy zbliżaniu,
+  czerwone 5–15 s odliczane blisko semafora/na postoju, krzywa hamowania automatu, 40 km/h przy
+  pomarańczowym do końca stacji, wykrycie przejechania „stój”), `src/scene/signals.ts` (tarcza „OA”
+  i semafor „A” na słupie, światła z poświatą mocniejszą nocą). Tryb AUTO/RĘCZNA w HUD, RADIOSTOP
+  (alarm `audio.radiostop()`, `emergencyStep`, komunikat), szybki przejazd bez kar, znaczniki na mapie.
+  Testy: `tests/signals.test.ts`.
+- [x] **Nowe lokalizacje** – pętla w `LANDMARK_ORDER` jako grupy segmentów (`LandmarkStop`):
+  Sokółka (`sokolka.ts`: stacja z otynkowanym dworcem + żwirownia: piaszczysta skarpa z sosnami, staw,
+  koparka na półce, sortownia z sitami, stożkowe hałdy, taśmociągi, lej JAXAN), most na Wiśle
+  (`wisla.ts`) tuż przed Warszawą (`warszawa.ts`: dwa perony pod wiatami, panorama z PKiN, Varso,
+  Złotą 44, Warsaw Spire; nocą okna i światła przeszkodowe), Kamieniec (kamieniołom, 2400 px dalej
+  stacja) bez zmian. Odstęp `LANDMARK_SPACING_PX = 22000` → miasta co ~2,4 min przy 100 km/h.
+  Testy: `tests/route.test.ts` (pętla grup), `tests/locations.test.ts` (prawdziwy rejestr).
+- [x] **Łany pól** (`fields.ts`, najczęstszy filler) – falujące zboże na pierwszym planie (3 pasy
+  głębi × 4 klatki wychylenia, fala wiatru per kolumna, hook `animateBed`), średni plan w pasy
+  (zboże, rzepak, zielone, ściernisko z belami), drzewa na miedzach, skośne miedze na brzegach,
+  czasem kombajn w pracy. Nocą ciemnieje razem ze sceną. Uwaga: `reference/pole.png` nie było
+  w repozytorium – styl wg opisu i `styl.jpg`.
+- Zrzuty: `screenshots/s1-*-dzien.png` / `s1-*-noc.png` (Sokółka stacja i żwirownia, Warszawa,
+  Kamieniec, pola).
