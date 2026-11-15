@@ -281,7 +281,7 @@ export interface EamosSprites {
 export function getEamos(load: number): EamosSprites {
   const step = Math.round(Math.min(1, Math.max(0, load)) * LOAD_STEPS);
   return cached(`eamos-${step}`, () => {
-    const body = makeSprite(WAGON_W, WAGON_H, (ctx) => drawWagon(ctx, step / LOAD_STEPS), true);
+    const body = makeSprite(WAGON_W, WAGON_H, (ctx) => drawWagon(ctx, step / LOAD_STEPS));
     return {
       body,
       bogies: makeSprite(WAGON_W, WAGON_H, drawBogies),

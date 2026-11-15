@@ -188,24 +188,32 @@ export const warszawa: SegmentDef = {
   mapIcon: 'city',
   mapLabel: WARSZAWA,
   mapAnchor: PKIN_CX,
-  render({ back, bed }, seed) {
+  // generator: yield = miejsce na przerwę między klatkami (World rozkłada render w czasie)
+  *render({ back, bed }, seed) {
     const rnd = mulberry32(seed);
     drawSkyline(back, mulberry32(0x77a));
+    yield;
     // drugi tor i peron za głównym (dalszy plan)
     rect(back, 0, TRACK_Y - 20, WIDTH, 6, PAL.ballastShade);
     rect(back, 0, TRACK_Y - 19, WIDTH, 1, PAL.railHead);
     rect(back, BACK_CANOPY.x0 - 30, TRACK_Y - 14, BACK_CANOPY.x1 - BACK_CANOPY.x0 + 60, 6, PAL.platform);
     rect(back, BACK_CANOPY.x0 - 30, TRACK_Y - 14, BACK_CANOPY.x1 - BACK_CANOPY.x0 + 60, 1, PAL.platformEdge);
     drawCanopy(back, BACK_CANOPY, PAL.canopyShade);
+    yield;
     for (let x = 6; x < 190; x += 18 + Math.floor(rnd() * 14)) plantBackItem(back, x, 'tree', rnd, -8);
     // główny peron, wiata, tablica
+    yield;
     drawPlatform(back, 20, WIDTH - 20, LAMPS, rnd);
+    yield;
     drawCanopy(back, CANOPY, PAL.pole);
+    yield;
     drawNameBoard(back, WARSZAWA, 46);
     // tablica z nazwą także na wiacie
     drawBackStrip(back, 0, 20, rnd);
     drawBackStrip(back, WIDTH - 20, WIDTH, rnd);
+    yield;
     drawGround(bed, 0, WIDTH, rnd);
+    yield;
     scatterBushes(bed, 0, WIDTH, 30, rnd);
   },
 

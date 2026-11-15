@@ -344,8 +344,20 @@ chłodne cienie, perspektywa powietrzna, dithering na przejściach, 5 tonów na 
 1. [x] **Etap D – domknięcie**: zrzuty dzień i noc każdej lokalizacji w `screenshots/s2-*-{dzien,noc}.png`
    (Sokółka stacja i żwirownia, Wisła, Warszawa, Kamieniec kamieniołom i stacja, wieś, pola, most).
 2. [x] **Etap D – dokumentacja**: aktualizacja `README.md` (styl2, wieś, pory dnia, tabor).
-3. **Etap D – lista do sprawdzenia na żywo**: obrót kół i sprzęgi przy podskokach, rim light wagonów
-   wieczorem, płynność 60 FPS przy wjazdach lokalizacji, chmury nocą (lekko brązowe – do oceny).
+3. [x] **Etap D – lista do sprawdzenia na żywo**: wygląd zaakceptowany przez użytkownika (15.11).
+   **Płynność przy wjazdach – pomiar 15.11** (Playwright, 1920×1080, monitor 75 Hz, 120 km/h):
+   - przed: śr. 75 FPS, ale pojedyncze klatki 40–53 ms przy wjazdach (render Sokółki 36–48 ms,
+     stacja Kamieniec 87 ms na zimno, pola 13–22 ms, nakładka rim light do 23 ms na warstwę);
+   - przyczyny: sprite'y na GPU wklejane do warstw segmentów na CPU (odczyt z karty) oraz
+     niepodzielny render segmentu i nakładek w jednej klatce;
+   - poprawki: wszystkie sprite'y na CPU (`makeSprite`), render segmentów jako generator z `yield`
+     (Sokółka, Warszawa, stacja, kamieniołom, pola, wieś), nakładki rim light liczone porcjami wierszy
+     (`rimPixels` + test zgodności ze starym algorytmem), budżet prerenderu 3 ms/klatkę w `World`,
+     rozgrzewka cache'u sprite'ów w tle po starcie;
+   - po: najdłuższy krok prerenderu ≤ 11 ms (panorama Warszawy), typowo 4–9 ms; bez spowolnienia CPU
+     75 FPS, najdłuższa klatka 13,5 ms (Sokółka, Wisła, Kamieniec, pola/wieś, stacja), `?soak=2` –
+     liczba canvasów stała (2–4). Przy CPU spowolnionym 4× zostają przycięcia – dalszej optymalizacji
+     nie robimy (decyzja 15.11).
 4. **Etap 2 – Załadunek w kopalni** (`hopperX`, `load` 0→1 w 3 s, test stanu wagonów).
 5. **Etap 2 – Liczba wagonów `+`/`-`** (1–12, test clamp).
 6. **Etap 2 – Licznik km i ton** w `localStorage` (try/catch, zapis co 10 s).

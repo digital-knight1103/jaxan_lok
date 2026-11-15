@@ -31,8 +31,12 @@ export interface SegmentDef {
   bridge?: boolean;
   /** Waga losowania (tylko fillery). */
   weight: number;
-  /** Rysuje statyczne warstwy RAZ; seed – ziarno tego egzemplarza. */
-  render(layers: SegmentLayers, seed: number): void;
+  /**
+   * Rysuje statyczne warstwy RAZ; seed – ziarno tego egzemplarza. Może być generatorem
+   * (`*render`): każdy `yield` to miejsce, w którym World może przerwać pracę i dokończyć
+   * w następnej klatce – ciężkie lokalizacje nie przycinają animacji.
+   */
+  render(layers: SegmentLayers, seed: number): void | Generator<void, void>;
   /** Animacje za pociągiem (x = ekranowy x początku segmentu). */
   animate?(ctx: CanvasRenderingContext2D, x: number, env: SegmentEnv, seed: number): void;
   /** Animacje pierwszego planu pod torem (np. falujące zboże) – po warstwie bed, przed nakładką nocy. */

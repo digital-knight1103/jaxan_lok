@@ -166,10 +166,12 @@ export const fields: SegmentDef = {
   kind: 'filler',
   width: WIDTH,
   weight: 6,
-  render({ back, bed }, seed) {
+  // generator: yield = miejsce na przerwę między klatkami (World rozkłada render w czasie)
+  *render({ back, bed }, seed) {
     const rnd = mulberry32(seed);
     const l = getLayout(seed);
     drawMidFields(back, l, rnd);
+    yield;
     // pojedyncze drzewa na miedzach + zadrzewione miedze na brzegach
     for (let k = 0; k < 1 + Math.floor(rnd() * 3); k++) {
       const s = l.stripes[1 + Math.floor(rnd() * 3)];
@@ -191,10 +193,13 @@ export const fields: SegmentDef = {
       const sh = getShrine();
       back.drawImage(sh, 120 + Math.floor(rnd() * (WIDTH - 240)), TRACK_Y + 1 - sh.height);
     }
+    yield;
     drawBackStrip(back, 0, WIDTH, rnd);
+    yield;
 
     // pierwszy plan: miedza z trawą, pod spodem złote podłoże łanu (luki między źdźbłami)
     drawGround(bed, 0, WIDTH, rnd);
+    yield;
     const ramp = [PAL.wheatHi, PAL.wheat, PAL.wheatShade, PAL.wheatDark, PAL.wheatDeep];
     for (let y = GROUND_Y + 2; y < H; y++) {
       const ri = Math.min(ramp.length - 1, Math.floor(((y - GROUND_Y) / (H - GROUND_Y)) * ramp.length));
@@ -202,6 +207,7 @@ export const fields: SegmentDef = {
       const ragR = edgeR(y) - Math.floor(rnd() * 3);
       rect(bed, ragL, y, ragR - ragL, 1, ramp[ri]);
       for (let x = ragL; x < ragR; x += 2 + Math.floor(rnd() * 4)) rect(bed, x, y, 1, 1, ramp[Math.min(ramp.length - 1, ri + 1)]);
+      if ((y & 31) === 31) yield;
     }
   },
 

@@ -38,9 +38,11 @@ export const village: SegmentDef = {
   kind: 'filler',
   width: WIDTH,
   weight: 3,
-  render({ back, bed }, seed) {
+  // generator: yield = miejsce na przerwę między klatkami (World rozkłada render w czasie)
+  *render({ back, bed }, seed) {
     const rnd = mulberry32(seed);
     drawPasture(back);
+    yield;
 
     // dalszy rząd: małe domy i topole
     const farBase = MEADOW_TOP + 8;
@@ -49,6 +51,7 @@ export const village: SegmentDef = {
       else put(back, getPoplar(Math.floor(rnd() * POPLAR_VARIANTS)), x, farBase);
     }
 
+    yield;
     // bliższy rząd: zagrody (kolejność losowa), płoty między budynkami
     const near = TRACK_Y;
     const kinds = ['barn', 'house', 'windmill', 'stork', 'house', 'willow', 'shrine', 'poplars'];
@@ -74,11 +77,15 @@ export const village: SegmentDef = {
       if (k === 'poplars') put(back, getPoplar(Math.floor(rnd() * POPLAR_VARIANTS)), x + s.width + 4, near - 1);
       if (k === 'house' && x + s.width + 30 < WIDTH) drawFence(back, x + s.width + 2, x + s.width + 26, near);
       x += s.width + 14 + Math.floor(rnd() * 26) + (k === 'house' ? 26 : 0);
+      yield;
     }
     drawBackStrip(back, 0, WIDTH, rnd);
+    yield;
     // wierzby przy rowie wzdłuż toru
     plantBackItem(back, 8, 'bush', rnd, 2);
+    yield;
     drawGround(bed, 0, WIDTH, rnd);
+    yield;
     scatterBushes(bed, 0, WIDTH, 22, rnd);
   },
 };

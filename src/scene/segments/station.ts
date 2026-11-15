@@ -189,18 +189,26 @@ export const station: SegmentDef = {
   mapIcon: 'station',
   mapLabel: STATION_NAME,
   mapAnchor: (B0 + B1) >> 1, // dworzec
-  render({ back, bed }, seed) {
+  // generator: yield = miejsce na przerwę między klatkami (World rozkłada render w czasie)
+  *render({ back, bed }, seed) {
     const rnd = mulberry32(seed);
     drawPalace(back);
+    yield;
     for (let x = 6; x < 236; x += 12 + Math.floor(rnd() * 14)) plantBackItem(back, x, rnd() < 0.5 ? 'tree' : 'pine', rnd, -4);
     for (let x = 416; x < 450; x += 14) plantBackItem(back, x, 'tree', rnd, -4);
+    yield;
     drawBuilding(back, rnd);
+    yield;
     drawShelter(back);
+    yield;
     drawPlatform(back, rnd);
+    yield;
     drawNameBoard(back);
     drawBackStrip(back, 0, 20, rnd);
     drawBackStrip(back, WIDTH - 20, WIDTH, rnd);
+    yield;
     drawGround(bed, 0, WIDTH, rnd);
+    yield;
     scatterBushes(bed, 0, WIDTH, 26, rnd);
   },
 

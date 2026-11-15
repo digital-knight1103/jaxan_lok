@@ -2,12 +2,15 @@
 
 export type DrawFn = (ctx: CanvasRenderingContext2D) => void;
 
-export function makeSprite(w: number, h: number, draw: DrawFn, readback = false): HTMLCanvasElement {
+export function makeSprite(w: number, h: number, draw: DrawFn): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
-  // readback: canvas w pamięci CPU – szybkie getImageData (malowanie pikselami, nakładki światła)
-  const ctx = c.getContext('2d', readback ? { willReadFrequently: true } : undefined)!;
+  // Zawsze canvas w pamięci CPU (willReadFrequently): szybkie getImageData (malowanie pikselami,
+  // nakładki światła), a przede wszystkim tanie drawImage sprite → warstwa segmentu (też CPU).
+  // Sprite na GPU wklejany do warstwy CPU wymuszał odczyt z karty – render Sokółki 48 → 23 ms.
+  // Gotowe sprite'y się nie zmieniają, więc przeglądarka wysyła je na GPU tylko raz.
+  const ctx = c.getContext('2d', { willReadFrequently: true })!;
   ctx.imageSmoothingEnabled = false;
   draw(ctx);
   return c;

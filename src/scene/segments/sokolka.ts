@@ -255,22 +255,30 @@ export const sokolka: SegmentDef = {
   mapIcon: 'gravel',
   mapLabel: SOKOLKA,
   mapAnchor: (B0 + B1) >> 1,
-  render({ back, bed, front }, seed) {
+  // generator: yield = miejsce na przerwę między klatkami (World rozkłada render w czasie)
+  *render({ back, bed, front }, seed) {
     const rnd = mulberry32(seed);
     // stacja
     for (let x = 6; x < 290; x += 14 + Math.floor(rnd() * 14)) plantBackItem(back, x, rnd() < 0.6 ? 'pine' : 'tree', rnd, -4);
     for (let x = 446; x < 680; x += 16 + Math.floor(rnd() * 14)) plantBackItem(back, x, rnd() < 0.5 ? 'tree' : 'pine', rnd, -4);
+    yield;
     drawBuilding(back);
+    yield;
     drawPlatform(back, 20, 660, LAMPS, rnd);
     drawNameBoard(back, SOKOLKA, 60);
     // żwirownia
+    yield;
     drawRidge(back, rnd);
+    yield;
     drawPond(back, rnd);
     drawExcavator(back, 930, TRACK_Y - BENCH.h);
     drawBelt(back, FEED);
+    yield;
     for (const p of PILES) drawPile(back, p.cx, p.h, p.ramp, rnd);
+    yield;
     for (const s of STACKERS) drawBelt(back, s, 70); // taśmy odkładcze – rzadkie podpory
     drawPlant(back);
+    yield;
     drawBelt(back, LOADER);
     drawHopper(back);
     // tablica wjazdowa żwirowni
@@ -283,7 +291,9 @@ export const sokolka: SegmentDef = {
     rect(back, 703 + tw, TRACK_Y - 25, 1, 25, PAL.plantDark);
     drawBackStrip(back, 0, 20, rnd);
     drawBackStrip(back, 660, WIDTH, rnd);
+    yield;
     drawGround(bed, 0, WIDTH, rnd);
+    yield;
     scatterBushes(bed, 0, WIDTH, 44, rnd);
     // przednie nogi bramy leja – przed pociągiem (głębia)
     for (const lx of [HOPPER_X - 25, HOPPER_X + 22]) {

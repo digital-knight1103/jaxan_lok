@@ -289,7 +289,7 @@ export interface Dragon2Sprites {
 
 export function getDragon2(): Dragon2Sprites {
   return cached('dragon2', () => ({
-    body: makeSprite(LOCO_W, LOCO_H, drawBody, true),
+    body: makeSprite(LOCO_W, LOCO_H, drawBody),
     bogies: makeSprite(LOCO_W, LOCO_H, drawBogieFrames),
     pantograph: makeSprite(LOCO_W, LOCO_BODY_TOP, drawPantograph),
     wheels: getWheelFrames(WHEEL_D),

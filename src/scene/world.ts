@@ -5,33 +5,66 @@ import { makeSprite } from '../engine/sprite';
 import { Route } from './route';
 import { REGISTRY, LANDMARK_ORDER } from './segments/registry';
 import type { Placed, SegmentEnv } from './segments/types';
-import { buildRimOverlays, drawRim, type RimOverlays } from '../engine/light';
+import { rimOverlaysJob, drawRim, type RimOverlays } from '../engine/light';
 
 interface Rendered {
   back: HTMLCanvasElement; bed: HTMLCanvasElement; front: HTMLCanvasElement;
-  /** Nakładki rim light (lewe/prawe słońce) – liczone raz, po jednej na klatkę (bez przycięć). */
+  /** Nakładki rim light (lewe/prawe słońce) – liczone po zakończeniu renderu, porcjami. */
   backRim?: RimOverlays; bedRim?: RimOverlays; frontRim?: RimOverlays;
+  /** Warstwy gotowe do rysowania (render skończony; nakładki mogą jeszcze dochodzić). */
+  ready: boolean;
+  /** Zadanie przyrostowe: render warstw, potem nakładki; undefined = wszystko gotowe. */
+  job?: Generator<void, void>;
 }
 interface Item { p: Placed; x: number; r: Rendered }
 
 /** Ile px przed ekranem renderujemy segmenty zawczasu. */
 const LOOKAHEAD = 640;
+/**
+ * Budżet czasu prerenderu na klatkę (ms). Zadania są dzielone na kroki (yield w render
+ * segmentu, porcje wierszy nakładek), więc żadna klatka nie dostaje całego segmentu naraz.
+ */
+const PREP_BUDGET_MS = 3;
 
 export class World {
   route = new Route(ROUTE_SEED, REGISTRY, LANDMARK_ORDER);
   private cache = new Map<number, Rendered>();
   private items: Item[] = [];
+  /**
+   * Rozgrzewka w tle: każdy typ segmentu renderowany raz do roboczych canvasów, gdy
+   * zostaje wolny budżet klatki. Tworzy cache'owane sprite'y (pałac, wieżowce, drzewa)
+   * zawczasu – pierwszy prawdziwy wjazd lokalizacji nie płaci za ich zimny start.
+   */
+  private warm: Generator<void, void> | undefined = warmUpJob();
 
-  private render(p: Placed): Rendered {
+  /** Nowy wpis cache z zadaniem: render (krokami, jeśli segment to generator) → nakładki. */
+  private start(p: Placed): Rendered {
     const w = p.def.width;
     let backCtx!: CanvasRenderingContext2D;
     let bedCtx!: CanvasRenderingContext2D;
     let frontCtx!: CanvasRenderingContext2D;
-    const back = makeSprite(w, H, (c) => (backCtx = c), true);
-    const bed = makeSprite(w, H, (c) => (bedCtx = c), true);
-    const front = makeSprite(w, H, (c) => (frontCtx = c), true);
-    p.def.render({ back: backCtx, bed: bedCtx, front: frontCtx }, p.seed);
-    return { back, bed, front };
+    const back = makeSprite(w, H, (c) => (backCtx = c));
+    const bed = makeSprite(w, H, (c) => (bedCtx = c));
+    const front = makeSprite(w, H, (c) => (frontCtx = c));
+    const r: Rendered = { back, bed, front, ready: false };
+    const def = p.def;
+    r.job = (function* () {
+      const g = def.render({ back: backCtx, bed: bedCtx, front: frontCtx }, p.seed);
+      if (g) yield* g;
+      r.ready = true;
+      yield;
+      r.backRim = yield* rimOverlaysJob(back);
+      r.bedRim = yield* rimOverlaysJob(bed);
+      r.frontRim = yield* rimOverlaysJob(front);
+    })();
+    return r;
+  }
+
+  /** Jeden krok zadania; false = zadanie skończone. */
+  private step(r: Rendered): boolean {
+    if (!r.job) return false;
+    if (r.job.next().done) r.job = undefined;
+    return !!r.job;
   }
 
   /** Wywołać raz na klatkę przed rysowaniem. camX = Math.floor(worldX). */
@@ -41,32 +74,29 @@ export class World {
       this.route = new Route(ROUTE_SEED, REGISTRY, LANDMARK_ORDER);
       this.cache.clear();
     }
-    // segmenty tuż za prawą krawędzią renderujemy zawczasu (max 1 na klatkę),
-    // żeby wjazd nowego odcinka nie powodował przycięcia animacji
+    // segmenty tuż za prawą krawędzią zaczynamy renderować zawczasu, żeby wjazd nowego
+    // odcinka nie powodował przycięcia animacji
     const vis = this.route.visible(camX, camX + W + LOOKAHEAD);
     const keep = new Set<number>();
-    let budget = 1;
     this.items = [];
     for (const p of vis) {
       keep.add(p.index);
-      const onScreen = p.startX < camX + W;
       let r = this.cache.get(p.index);
-      if (!r && (onScreen || budget-- > 0)) {
-        r = this.render(p);
-        this.cache.set(p.index, r);
-      }
-      if (onScreen && r) this.items.push({ p, x: p.startX - camX, r });
+      if (!r) this.cache.set(p.index, (r = this.start(p)));
+      const onScreen = p.startX < camX + W;
+      // segment już na ekranie (np. po skoku z mapy) – render dokańczamy od razu
+      if (onScreen) while (!r.ready && this.step(r));
+      if (onScreen) this.items.push({ p, x: p.startX - camX, r });
     }
     for (const k of this.cache.keys()) if (!keep.has(k)) this.cache.delete(k);
-    // nakładki światła: jedna warstwa na klatkę, gdy nic innego się nie renderowało
-    // (widoczne segmenty pierwsze – w kolejności trasy)
-    if (budget > 0) {
-      for (const r of this.cache.values()) {
-        if (!r.backRim) { r.backRim = buildRimOverlays(r.back); break; }
-        if (!r.bedRim) { r.bedRim = buildRimOverlays(r.bed); break; }
-        if (!r.frontRim) { r.frontRim = buildRimOverlays(r.front); break; }
-      }
+    // reszta pracy w budżecie czasu, w kolejności trasy (najbliższe segmenty pierwsze);
+    // co najmniej jeden krok na klatkę – praca zawsze posuwa się do przodu
+    const t0 = performance.now();
+    const spent = () => performance.now() - t0 > PREP_BUDGET_MS;
+    for (const r of this.cache.values()) {
+      while (this.step(r)) if (spent()) return;
     }
+    while (this.warm && !spent()) if (this.warm.next().done) this.warm = undefined;
   }
 
   get cachedCanvases(): number {
@@ -103,5 +133,23 @@ export class World {
 
   drawLights(ctx: CanvasRenderingContext2D, env: SegmentEnv): void {
     for (const it of this.items) it.p.def.lights?.(ctx, it.x, env, it.p.seed);
+  }
+}
+
+/** Zadanie rozgrzewki: render każdej definicji segmentu do roboczych canvasów (potem do GC). */
+function* warmUpJob(): Generator<void, void> {
+  const w = Math.max(...REGISTRY.map((d) => d.width));
+  let back!: CanvasRenderingContext2D;
+  let bed!: CanvasRenderingContext2D;
+  let front!: CanvasRenderingContext2D;
+  makeSprite(w, H, (c) => (back = c));
+  makeSprite(w, H, (c) => (bed = c));
+  makeSprite(w, H, (c) => (front = c));
+  yield;
+  for (const d of REGISTRY) {
+    for (const c of [back, bed, front]) c.clearRect(0, 0, w, H);
+    const g = d.render({ back, bed, front }, 1);
+    if (g) yield* g;
+    yield;
   }
 }

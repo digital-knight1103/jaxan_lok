@@ -164,15 +164,20 @@ export const quarry: SegmentDef = {
   mapIcon: 'quarry',
   mapLabel: 'KOPALNIA KRUSZYWA',
   mapAnchor: HOPPER_X,
-  render({ back, bed, front }, seed) {
+  // generator: yield = miejsce na przerwę między klatkami (World rozkłada render w czasie)
+  *render({ back, bed, front }, seed) {
     const rnd = mulberry32(seed);
     drawWall(back, rnd);
+    yield;
     drawExcavator(back, 700, TRACK_Y - LEVEL_H);
     drawExcavator(back, 300, TRACK_Y - LEVEL_H * 4);
+    yield;
     drawPile(back, rnd);
+    yield;
     drawConveyor(back, C1);
     drawConveyor(back, C2);
     drawHopperBack(back);
+    yield;
     // tablica przy wjeździe
     const label = 'KOPALNIA KRUSZYWA';
     const tw = textWidth(label);
@@ -182,7 +187,9 @@ export const quarry: SegmentDef = {
     rect(back, 840 - tw, TRACK_Y - 24, 1, 26, PAL.plantDark);
     rect(back, 842, TRACK_Y - 24, 1, 26, PAL.plantDark);
     drawBackStrip(back, 0, WIDTH, rnd);
+    yield;
     drawGround(bed, 0, WIDTH, rnd);
+    yield;
     scatterBushes(bed, 0, WIDTH, 30, rnd);
     // przednie nogi bramy leja – przed pociągiem (głębia)
     for (const lx of [HOPPER_X - 25, HOPPER_X + 22]) {
