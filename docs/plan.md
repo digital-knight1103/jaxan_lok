@@ -251,10 +251,10 @@ class DayCycle { t: number /*0=północ,0.5=południe*/; auto: boolean;
 Każdy punkt osobno: implementacja → build → zrzut → commit.
 
 - [ ] **Pogoda `W`**: słońce → deszcz → śnieg na `Pool`; mokre odbicia na szynach przy deszczu.
-- [ ] **Załadunek w kopalni**: zatrzymanie z wagonem pod `hopperX` (±12 px) → sypanie kruszywa, `load` 0→1 w 3 s, kolejny wagon wymaga podjechania. Wagony w trasie wracają do „pustych" po stacji (logika w `consist.ts`, test na stan wagonów).
+- [x] ~~**Załadunek w kopalni**~~ (rezygnacja – scena tła): zatrzymanie z wagonem pod `hopperX` (±12 px) → sypanie kruszywa, `load` 0→1 w 3 s, kolejny wagon wymaga podjechania. Wagony w trasie wracają do „pustych" po stacji (logika w `consist.ts`, test na stan wagonów).
 - [x] **Semafory** – zrobione w poprawkach 2026-11-14 (część 2), patrz niżej.
-- [ ] **Liczba wagonów `+`/`-`** (1–12, test clamp).
-- [ ] **Licznik km i ton** w `localStorage` (try/catch, zapis co 10 s).
+- [x] ~~**Liczba wagonów**~~ (rezygnacja – scena tła).
+- [x] ~~**Licznik km i ton**~~ (rezygnacja – scena tła).
 - [ ] **Tryb kinowy `C`**: HUD ukryty, powolny zoom całkowity (×1 ↔ ×2 wycinka bufora).
 
 ---
@@ -358,8 +358,8 @@ chłodne cienie, perspektywa powietrzna, dithering na przejściach, 5 tonów na 
      75 FPS, najdłuższa klatka 13,5 ms (Sokółka, Wisła, Kamieniec, pola/wieś, stacja), `?soak=2` –
      liczba canvasów stała (2–4). Przy CPU spowolnionym 4× zostają przycięcia – dalszej optymalizacji
      nie robimy (decyzja 15.11).
-4. **Etap 2 – Załadunek w kopalni** (`hopperX`, `load` 0→1 w 3 s, test stanu wagonów).
-5. **Etap 2 – Liczba wagonów `+`/`-`** (1–12, test clamp).
-6. **Etap 2 – Licznik km i ton** w `localStorage` (try/catch, zapis co 10 s).
+4. ~~**Etap 2 – Załadunek w kopalni**~~ (rezygnacja – scena tła) (`hopperX`, `load` 0→1 w 3 s, test stanu wagonów).
+5. ~~**Etap 2 – Liczba wagonów**~~ (rezygnacja – scena tła) (1–12, test clamp).
+6. ~~**Etap 2 – Licznik km i ton**~~ (rezygnacja – scena tła) w `localStorage` (try/catch, zapis co 10 s).
 7. **Etap 2 – Tryb kinowy `C`** (HUD ukryty, zoom całkowity ×1 ↔ ×2).
 8. **Etap 2 – Pogoda `W`** (deszcz, śnieg, mokre odbicia na szynach).
