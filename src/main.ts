@@ -190,7 +190,7 @@ function jumpTo(p: Poi | null): void {
 const cursorIdle = new IdleTracker(CURSOR_HIDE_MS);
 const hudIdle = new IdleTracker(HUD_HIDE_MS);
 const autoIdle = new IdleTracker(AUTO_RESUME_MS);
-let pointerHorn = false;
+let pointerHorn: 'lo' | 'hi' | 'both' | null = null;
 // nakładka pomocy (?) i jednorazowa podpowiedź przy pierwszym uruchomieniu (8 s, zapamiętana w localStorage)
 let helpOpen = false;
 let helpWas = false;
@@ -215,14 +215,27 @@ function action(a: Action): void {
     case 'horn-down':
       if (!state.horn) {
         state.horn = true;
-        audio.hornStart();
+        audio.hornStart('lo');
         birds.scare(Math.floor(worldX)); // także przy wyciszonym dźwięku
       }
       break;
     case 'horn-up':
       if (state.horn) {
         state.horn = false;
-        audio.hornStop();
+        audio.hornStop('lo');
+      }
+      break;
+    case 'horn-hi-down':
+      if (!state.hornHi) {
+        state.hornHi = true;
+        audio.hornStart('hi');
+        birds.scare(Math.floor(worldX));
+      }
+      break;
+    case 'horn-hi-up':
+      if (state.hornHi) {
+        state.hornHi = false;
+        audio.hornStop('hi');
       }
       break;
     case 'toggle-night':
@@ -319,7 +332,8 @@ bindInput(screen.canvas, {
     if (!(hit && 'action' in hit && hit.action === 'weather-menu')) hud.menuOpen = false; // klik poza menu je zamyka
     if (hit && 'action' in hit) {
       action(hit.action);
-      if (hit.action === 'horn-down') pointerHorn = true;
+      if (hit.action === 'horn-down') pointerHorn = 'lo';
+      if (hit.action === 'horn-hi-down') pointerHorn = 'hi';
       return;
     }
     if (hit && 'setTarget' in hit) {
@@ -332,8 +346,9 @@ bindInput(screen.canvas, {
     // klik/dotyk w lokomotywę = trąbienie (także gdy HUD był ukryty)
     const r = consist.locoRect();
     if (p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h) {
-      action('horn-down');
-      pointerHorn = true;
+      action('horn-down'); // klik w lokomotywę = dwuton (obie trąbki)
+      action('horn-hi-down');
+      pointerHorn = 'both';
     }
     // każdy inny dotyk tylko pokazuje HUD (onActivity)
   },
@@ -343,8 +358,9 @@ bindInput(screen.canvas, {
   },
   onPointerUp(cx) {
     if (pointerHorn) {
-      pointerHorn = false;
-      action('horn-up');
+      if (pointerHorn !== 'hi') action('horn-up');
+      if (pointerHorn !== 'lo') action('horn-hi-up');
+      pointerHorn = null;
     }
     // krótkie kliknięcie w punkt na mapie = szybki przejazd do niego
     jumpTo(routeMap.pointerUp(screen.toGame(cx, 0).x, trainRef()));
@@ -575,7 +591,7 @@ startLoop(
     // 6. HUD i mapa trasy (chowają się razem)
     hud.draw(ctx, {
       kmh: state.kmh, targetKmh: state.targetKmh, running: state.running,
-      night: night > 0.5, muted: state.muted, horn: state.horn,
+      night: night > 0.5, muted: state.muted, horn: state.horn, hornHi: state.hornHi,
       auto: state.autoDrive, weather: weather.choice, signal: signalPreview(),
     });
     drawAlert();

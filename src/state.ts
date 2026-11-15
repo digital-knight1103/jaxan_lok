@@ -7,6 +7,8 @@ export interface AppState {
   kmh: number;
   muted: boolean;
   horn: boolean;
+  /** Trąbka wysoka (J); horn = niska (H). */
+  hornHi: boolean;
   dayAuto: boolean;
   wagons: number;
   hudVisible: boolean;
@@ -21,6 +23,7 @@ export function initialState(): AppState {
     kmh: START_KMH,
     muted: true,
     horn: false,
+    hornHi: false,
     dayAuto: true,
     wagons: DEFAULT_WAGONS,
     hudVisible: true,

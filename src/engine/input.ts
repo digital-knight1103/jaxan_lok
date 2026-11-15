@@ -2,12 +2,13 @@
 // więc przytrzymane H = jeden ciągły sygnał.
 
 export type Action =
-  | 'horn-down' | 'horn-up' | 'toggle-night' | 'toggle-run' | 'faster' | 'slower'
+  | 'horn-down' | 'horn-up' | 'horn-hi-down' | 'horn-hi-up' | 'toggle-night' | 'toggle-run' | 'faster' | 'slower'
   | 'toggle-mute' | 'fullscreen' | 'weather' | 'cinema' | 'wagon-add' | 'wagon-remove'
   | 'poi-prev' | 'poi-next' | 'toggle-auto' | 'help' | 'weather-menu';
 
 const KEYS: Record<string, Action> = {
   KeyH: 'horn-down',
+  KeyJ: 'horn-hi-down',
   KeyA: 'toggle-auto',
   KeyN: 'toggle-night',
   Space: 'toggle-run',
@@ -53,9 +54,13 @@ export function bindInput(target: HTMLElement, h: InputHandlers): void {
   });
   window.addEventListener('keyup', (e) => {
     if (e.code === 'KeyH') h.onAction('horn-up');
+    if (e.code === 'KeyJ') h.onAction('horn-hi-up');
   });
   // utrata fokusu – nie zostawiaj „zaciętej" syreny
-  window.addEventListener('blur', () => h.onAction('horn-up'));
+  window.addEventListener('blur', () => {
+    h.onAction('horn-up');
+    h.onAction('horn-hi-up');
+  });
 
   target.addEventListener('pointerdown', (e) => {
     h.onActivity();

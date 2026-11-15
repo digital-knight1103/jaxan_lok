@@ -9,6 +9,7 @@ import type { WeatherChoice } from '../scene/weather';
 type Icon = string[];
 
 const ICONS: Record<string, Icon> = {
+  hornHi: ['.......#.', '#.....##.', '##...####', '#########', '#########', '##...####', '#.....##.', '.......#.', '.........'],
   horn: ['.........', '#......##', '##...####', '#########', '#########', '##...####', '#......##', '.........', '.........'],
   moon: ['..####...', '.##......', '##.......', '##.......', '##.......', '##.......', '.##......', '..####...', '.........'],
   sun: ['....#....', '.#.....#.', '...###...', '..#####..', '#.#####.#', '..#####..', '...###...', '.#.....#.', '....#....'],
@@ -34,6 +35,7 @@ export interface HudState {
   night: boolean;
   muted: boolean;
   horn: boolean;
+  hornHi: boolean;
   /** Jazda automatyczna czy ręczna. */
   auto: boolean;
   /** Wybór pogody: AUTO albo konkretna. */
@@ -57,6 +59,7 @@ interface Button { action: Action; key: string; icon: (s: HudState) => string; a
 
 const BUTTONS: Button[] = [
   { action: 'horn-down', key: 'H', icon: () => 'horn', active: (s) => s.horn },
+  { action: 'horn-hi-down', key: 'J', icon: () => 'hornHi', active: (s) => s.hornHi },
   { action: 'toggle-night', key: 'N', icon: (s) => (s.night ? 'sun' : 'moon'), active: (s) => s.night },
   { action: 'toggle-run', key: 'SPC', icon: (s) => (s.running ? 'pause' : 'play'), active: (s) => s.running },
   { action: 'slower', key: '<', icon: () => 'slower', active: () => false },
@@ -302,7 +305,8 @@ export function drawLimitPanel(ctx: CanvasRenderingContext2D, s: LimitHud, time:
 
 /** Skróty pokazywane w nakładce pomocy: [klawisz, opis]. */
 export const HELP_LINES: [string, string][] = [
-  ['H', 'TRĄBIENIE (PRZYTRZYMAJ)'],
+  ['H', 'TRĄBKA NISKA (PRZYTRZYMAJ)'],
+  ['J', 'TRĄBKA WYSOKA; H+J = DWUTON'],
   ['N', 'DZIEŃ / NOC'],
   ['SPACJA', 'START / STOP'],
   ['< >', 'PRĘDKOŚĆ -/+ 10 KM/H'],

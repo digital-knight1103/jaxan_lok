@@ -48,7 +48,7 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
 | Tryb kinowy (bez HUD i mapy, kamera) | `C` | przycisk 🎬 `C`; dowolny klawisz / ruch myszy = powrót |
 | Lista skrótów (nakładka) | `?` | przycisk `?`; zamyka dowolny klawisz lub kliknięcie |
 
-Przy każdym przycisku HUD widać literę skrótu (H, N, SPC = Spacja, <, >, M, F, W, C, ?). Przy pierwszym
+Przy każdym przycisku HUD widać literę skrótu (H, J, N, SPC = Spacja, <, >, M, F, W, C, ?). Przy pierwszym
 uruchomieniu przez 8 s pokazuje się podpowiedź „? – sterowanie” (zapamiętana w `localStorage`).
 
 - **Mapa trasy** (pasek na dole) pokazuje pociąg i punkty w promieniu ±10 km: stację Kamieniec

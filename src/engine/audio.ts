@@ -19,25 +19,71 @@ export function motorParams(kmh: number): { gain: number; lowpass: number; pitch
 const JOINT_PX = 96;
 const AXLE_PX = 14;
 
-/** Akord syreny (Hz). */
-/** Syrena dwutonowa jak w lokomotywie: najpierw ton niski, po chwili dołącza wysoki (każdy to kwinta/tercja). */
-const HORN_LOW = [277, 349];
-const HORN_HIGH = [370, 466];
-/** Po ilu sekundach trzymania wchodzi ton wysoki. */
-const HORN_SHIFT_S = 0.3;
+/** Syrena dwutonowa (typu tyfon): dwie niezależne trąbki – niska (H) i wysoka (J); razem dają kwartę. */
+export type HornId = 'lo' | 'hi';
+const HORN_HZ: Record<HornId, number> = { lo: 311, hi: 415 };
 
 type Ctx = AudioContext;
+
+/** Jedna trąbka: obwiednia głośności i oscylatory (do ślizgu wysokości przy ataku). */
+interface HornVoice { gain: GainNode; oscs: { o: OscillatorNode; f: number }[]; at: number }
+
+/**
+ * Trąbka lokomotywy: piła + rozstrojona piła + oktawa (trójkąt) przez rezonans kielicha (~1,1 kHz),
+ * z cichym szumem powietrza. Atak: wysokość wślizguje się od ~5% niżej w 0,12 s, jak przy wpuszczeniu powietrza.
+ */
+function makeHornVoice(ctx: Ctx, out: AudioNode, hz: number): HornVoice {
+  const env = ctx.createGain();
+  env.gain.value = 0;
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 2600;
+  lp.Q.value = 0.7;
+  const bell = ctx.createBiquadFilter();
+  bell.type = 'peaking';
+  bell.frequency.value = 1100;
+  bell.Q.value = 1.2;
+  bell.gain.value = 7;
+  lp.connect(bell).connect(env).connect(out);
+  const oscs: { o: OscillatorNode; f: number }[] = [];
+  for (const [type, mul, det, g] of [['sawtooth', 1, -4, 0.55], ['sawtooth', 1, 5, 0.45], ['triangle', 2, 0, 0.3]] as const) {
+    const o = ctx.createOscillator();
+    o.type = type;
+    o.frequency.value = hz * mul;
+    o.detune.value = det;
+    const og = ctx.createGain();
+    og.gain.value = g;
+    o.connect(og).connect(lp);
+    o.start();
+    oscs.push({ o, f: hz * mul });
+  }
+  // szum powietrza przez trąbkę (pętla), mocno przytłumiony
+  const nb = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+  const nd = nb.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  const ns = ctx.createBufferSource();
+  ns.buffer = nb;
+  ns.loop = true;
+  const nbp = ctx.createBiquadFilter();
+  nbp.type = 'bandpass';
+  nbp.frequency.value = hz * 6;
+  nbp.Q.value = 0.8;
+  const ng = ctx.createGain();
+  ng.gain.value = 0.05;
+  ns.connect(nbp).connect(ng).connect(env);
+  ns.start();
+  return { gain: env, oscs, at: 0 };
+}
 
 export class AudioEngine {
   muted = true;
   private ctx: Ctx | null = null;
   private master: GainNode | null = null;
   private motor: { osc: OscillatorNode; whine: OscillatorNode; gain: GainNode; filter: BiquadFilterNode; filter2: BiquadFilterNode } | null = null;
-  private horn: { gain: GainNode; lo: GainNode; hi: GainNode } | null = null;
+  private horn: Record<HornId, HornVoice> | null = null;
   private squeal: { osc: OscillatorNode; gain: GainNode } | null = null;
   private noise: AudioBuffer | null = null;
   private jointDist = 0;
-  private hornAt = 0;
   private lastKmh = -1;
   private lastSq = 0;
   private rain: { gain: GainNode } | null = null;
@@ -97,33 +143,8 @@ export class AudioEngine {
     whine.start();
     this.motor = { osc, whine, gain, filter, filter2 };
 
-    // syrena: dwa piłokształtne tony przez filtr, wspólna obwiednia
-    const hg = ctx.createGain();
-    hg.gain.value = 0;
-    const hf = ctx.createBiquadFilter();
-    hf.type = 'lowpass';
-    hf.frequency.value = 1800;
-    const lo = ctx.createGain();
-    const hi = ctx.createGain();
-    lo.gain.value = 1;
-    hi.gain.value = 0;
-    lo.connect(hf);
-    hi.connect(hf);
-    for (const [freqs, bus] of [[HORN_LOW, lo], [HORN_HIGH, hi]] as const) {
-      for (const f of freqs) {
-        // dwa lekko rozstrojone generatory na ton = „trzepot" mosiężnej membrany
-        for (const det of [-3, 3]) {
-          const o = ctx.createOscillator();
-          o.type = 'sawtooth';
-          o.frequency.value = f;
-          o.detune.value = det;
-          o.connect(bus);
-          o.start();
-        }
-      }
-    }
-    hf.connect(hg).connect(this.master);
-    this.horn = { gain: hg, lo, hi };
+    // syrena dwutonowa: dwie niezależne trąbki (niska i wysoka)
+    this.horn = { lo: makeHornVoice(ctx, this.master, HORN_HZ.lo), hi: makeHornVoice(ctx, this.master, HORN_HZ.hi) };
 
     // pisk hamulców
     const sg = ctx.createGain();
@@ -233,37 +254,37 @@ export class AudioEngine {
     src.stop(at + 0.12);
   }
 
-  hornStart(): void {
+  hornStart(id: HornId = 'lo'): void {
     if (!this.ctx || !this.horn || this.muted) return;
     const now = this.ctx.currentTime;
-    const g = this.horn.gain.gain;
+    const v = this.horn[id];
+    const g = v.gain.gain;
     g.cancelScheduledValues(now);
     g.setValueAtTime(g.value, now);
-    g.linearRampToValueAtTime(AUDIO.horn, now + 0.08); // narastanie
-    // ton niski od razu; po chwili przechodzi w wysoki (niski zostaje cicho w tle)
-    const { lo, hi } = this.horn;
-    for (const [n, v0, v1] of [[lo, 1, 0.4], [hi, 0, 1]] as const) {
-      n.gain.cancelScheduledValues(now);
-      n.gain.setValueAtTime(v0, now);
-      n.gain.setValueAtTime(v0, now + HORN_SHIFT_S);
-      n.gain.linearRampToValueAtTime(v1, now + HORN_SHIFT_S + 0.06);
+    g.linearRampToValueAtTime(AUDIO.horn, now + 0.06); // szybkie narastanie (powietrze)
+    // ślizg wysokości od ~5% niżej – wejście tonu
+    for (const { o, f } of v.oscs) {
+      o.frequency.cancelScheduledValues(now);
+      o.frequency.setValueAtTime(f * 0.95, now);
+      o.frequency.exponentialRampToValueAtTime(f, now + 0.12);
     }
-    this.hornAt = now;
+    v.at = now;
   }
 
-  hornStop(): void {
+  hornStop(id: HornId = 'lo'): void {
     if (!this.ctx || !this.horn) return;
     const now = this.ctx.currentTime;
-    const g = this.horn.gain.gain;
+    const v = this.horn[id];
+    const g = v.gain.gain;
     // krótkie naciśnięcie i tak daje sygnał min. 0,4 s (narastanie nie jest przerywane)
-    const from = Math.max(now, this.hornAt + 0.4);
+    const from = Math.max(now, v.at + 0.4);
     if (from === now) {
       g.cancelScheduledValues(now);
       g.setValueAtTime(g.value, now);
     } else {
       g.setValueAtTime(AUDIO.horn, from);
     }
-    g.linearRampToValueAtTime(0, from + 0.3); // wygaszanie
+    g.linearRampToValueAtTime(0, from + 0.25); // wygaszanie
   }
 
   /** RADIOSTOP: przenikliwy, przerywany alarm dwutonowy (~2,5 s) po przejechaniu sygnału STÓJ. */
