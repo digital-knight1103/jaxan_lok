@@ -1,6 +1,6 @@
 // HUD: minimalistyczny panel w barwach JAXAN (czerń + magenta + zieleń),
 // rysowany w buforze 640×360 pikselową czcionką. Chowa się po bezczynności.
-import { MAX_KMH, SPEED_STEP_KMH, W } from '../config';
+import { MAX_KMH, SPEED_STEP_KMH, W, H } from '../config';
 import { PAL } from '../palette';
 import { drawText, textWidth } from '../engine/font';
 import type { Action } from '../engine/input';
@@ -17,6 +17,8 @@ const ICONS: Record<string, Icon> = {
   faster: ['.........', '.#...#...', '..#...#..', '...#...#.', '....#...#', '...#...#.', '..#...#..', '.#...#...', '.........'],
   sound: ['...#.....', '..##..#..', '####...#.', '####.#.#.', '####.#.#.', '####...#.', '..##..#..', '...#.....', '.........'],
   muted: ['...#.....', '..##.....', '####.#.#.', '####..#..', '####.#.#.', '####.....', '..##.....', '...#.....', '.........'],
+  cinema: ['.........', '#########', '#.#.#.#.#', '#########', '#.......#', '#.......#', '#.......#', '#########', '.........'],
+  help: ['..#####..', '.##...##.', '.##...##.', '.....##..', '....##...', '....##...', '.........', '....##...', '....##...'],
   full: ['###...###', '#.......#', '#.......#', '.........', '.........', '.........', '#.......#', '#.......#', '###...###'],
 };
 
@@ -38,27 +40,29 @@ interface Button { action: Action; key: string; icon: (s: HudState) => string; a
 const BUTTONS: Button[] = [
   { action: 'horn-down', key: 'H', icon: () => 'horn', active: (s) => s.horn },
   { action: 'toggle-night', key: 'N', icon: (s) => (s.night ? 'sun' : 'moon'), active: (s) => s.night },
-  { action: 'toggle-run', key: 'SP', icon: (s) => (s.running ? 'pause' : 'play'), active: (s) => s.running },
+  { action: 'toggle-run', key: 'SPC', icon: (s) => (s.running ? 'pause' : 'play'), active: (s) => s.running },
   { action: 'slower', key: '<', icon: () => 'slower', active: () => false },
   { action: 'faster', key: '>', icon: () => 'faster', active: () => false },
   { action: 'toggle-mute', key: 'M', icon: (s) => (s.muted ? 'muted' : 'sound'), active: (s) => !s.muted },
   { action: 'fullscreen', key: 'F', icon: () => 'full', active: () => false },
+  { action: 'cinema', key: 'C', icon: () => 'cinema', active: () => false },
+  { action: 'help', key: '?', icon: () => 'help', active: () => false },
 ];
 
 // układ panelu (piksele gry)
 const PX = 6;
 const PY = 6;
-const PW = 140;
-const PH = 60;
 const BTN = 13;
+const BTN_STEP = 18;
+const PW = 10 + (BUTTONS.length - 1) * BTN_STEP + BTN;
+const PH = 60;
 /** Wysokość paska podglądu sygnału pod panelem. */
 const SIG_H = 12;
 /** Szerokość klikalnego pola trybu jazdy (prawa część paska). */
 const MODE_W = 52;
 const BTN_Y = PY + 31;
 const BTN_X0 = PX + 5;
-const BTN_STEP = 18;
-const BAR = { x: PX + 62, y: PY + 17, w: 72, h: 5 };
+const BAR = { x: PX + 62, y: PY + 17, w: PW - 62 - 6, h: 5 };
 
 export type HudHit = { action: Action } | { setTarget: number } | null;
 
@@ -211,5 +215,72 @@ export function drawLimitPanel(ctx: CanvasRenderingContext2D, s: LimitHud, time:
   ctx.fillRect(x + 4, y + 38, LP.w - 8, 1);
   const nt = s.next ? `NASTĘPNE: ${s.next.kmh} ZA ${s.next.km.toFixed(1).replace('.', ',')} KM` : 'NASTĘPNE: BRAK ZMIAN';
   drawText(ctx, nt, x + 6, y + 41, s.next ? PAL.hudText : PAL.hudDim);
+  ctx.globalAlpha = 1;
+}
+
+/** Skróty pokazywane w nakładce pomocy: [klawisz, opis]. */
+export const HELP_LINES: [string, string][] = [
+  ['H', 'TRĄBIENIE (PRZYTRZYMAJ)'],
+  ['N', 'DZIEŃ / NOC'],
+  ['SPACJA', 'START / STOP'],
+  ['< >', 'PRĘDKOŚĆ -/+ 10 KM/H'],
+  ['A', 'JAZDA AUTO / RĘCZNA'],
+  ['M', 'DŹWIĘK WŁ. / WYŁ.'],
+  ['F', 'PEŁNY EKRAN'],
+  ['W', 'POGODA: AUTO, POGODNIE, POCHMURNO...'],
+  ['C', 'TRYB KINOWY'],
+  ['+ -', 'DODAJ / ODEJMIJ WAGON'],
+  ['[ ]', 'POPRZEDNI / NASTĘPNY PUNKT TRASY'],
+  ['?', 'TA POMOC'],
+];
+
+/** Półprzezroczysta nakładka z listą skrótów (barwy JAXAN); zamykana dowolnym klawiszem lub kliknięciem. */
+export function drawHelp(ctx: CanvasRenderingContext2D): void {
+  const kw = 46;
+  let tw = 0;
+  for (const [, d] of HELP_LINES) tw = Math.max(tw, textWidth(d));
+  const w = 12 + kw + tw + 12;
+  const rowH = 11;
+  const h = 34 + HELP_LINES.length * rowH + 14;
+  const x = (W - w) >> 1;
+  const y = (H - h) >> 1;
+  ctx.globalAlpha = 0.88;
+  ctx.fillStyle = PAL.hudBg;
+  ctx.fillRect(x, y, w, h);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = PAL.locoMagenta;
+  ctx.fillRect(x, y, w, 2);
+  ctx.fillRect(x, y + h - 2, w, 2);
+  ctx.fillRect(x, y, 1, h);
+  ctx.fillRect(x + w - 1, y, 1, h);
+  ctx.fillStyle = PAL.jaxanGreen;
+  ctx.fillRect(x + 2, y + 2, w - 4, 1);
+  drawText(ctx, 'JAXAN', x + 12, y + 10, PAL.locoMagentaHi, 2);
+  drawText(ctx, 'STEROWANIE', x + 12 + textWidth('JAXAN', 2) + 8, y + 10, PAL.hudText, 2);
+  HELP_LINES.forEach(([k, d], i) => {
+    const ry = y + 34 + i * rowH;
+    ctx.fillStyle = PAL.hudButton;
+    ctx.fillRect(x + 12, ry - 3, textWidth(k) + 6, 9);
+    ctx.fillStyle = PAL.hudButtonHi;
+    ctx.fillRect(x + 12, ry - 3, textWidth(k) + 6, 1);
+    drawText(ctx, k, x + 15, ry, PAL.locoMagentaHi);
+    drawText(ctx, d, x + 12 + kw, ry, PAL.hudText);
+  });
+  drawText(ctx, 'DOWOLNY KLAWISZ LUB KLIKNIĘCIE ZAMYKA', x + 12, y + h - 12, PAL.hudDim);
+}
+
+/** Podpowiedź przy pierwszym uruchomieniu (u góry, na środku); alpha 0..1. */
+export function drawHint(ctx: CanvasRenderingContext2D, alpha: number): void {
+  if (alpha <= 0) return;
+  const t = '? - STEROWANIE';
+  const w = textWidth(t) + 14;
+  const x = (W - w) >> 1;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = PAL.hudBg;
+  ctx.fillRect(x, 8, w, 15);
+  ctx.fillStyle = PAL.locoMagenta;
+  ctx.fillRect(x, 8, w, 1);
+  ctx.fillRect(x, 22, w, 1);
+  drawText(ctx, t, x + 7, 13, PAL.hudText);
   ctx.globalAlpha = 1;
 }

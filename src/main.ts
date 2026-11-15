@@ -23,7 +23,7 @@ import { stepSpeed, adjustTarget, emergencyStep } from './train/physics';
 import { SignalSystem } from './train/signals';
 import { drawSignalPosts, drawSignalLights, signalColor } from './scene/signals';
 import { drawText, textWidth } from './engine/font';
-import { Hud, drawLimitPanel } from './ui/hud';
+import { Hud, drawLimitPanel, drawHelp, drawHint } from './ui/hud';
 import { RouteMap } from './ui/routemap';
 import { RouteIndex, ANCHOR_SCREEN_X, KM_PX, stopWorldX, type Poi } from './scene/routeindex';
 import { TravelAnim, type TravelFrame } from './scene/travel';
@@ -191,6 +191,16 @@ const cursorIdle = new IdleTracker(CURSOR_HIDE_MS);
 const hudIdle = new IdleTracker(HUD_HIDE_MS);
 const autoIdle = new IdleTracker(AUTO_RESUME_MS);
 let pointerHorn = false;
+// nakładka pomocy (?) i jednorazowa podpowiedź przy pierwszym uruchomieniu (8 s, zapamiętana w localStorage)
+let helpOpen = false;
+let helpWas = false;
+let hintT = 0;
+try {
+  if (!localStorage.getItem('jaxan.hintSeen')) {
+    hintT = 8;
+    localStorage.setItem('jaxan.hintSeen', '1');
+  }
+} catch { /* localStorage niedostępny – podpowiedź pokaże się przy każdym starcie */ }
 
 function action(a: Action): void {
   switch (a) {
@@ -244,6 +254,10 @@ function action(a: Action): void {
       // dowolne zdarzenie wejścia już wyłączyło tryb (onActivity) – C przełącza względem stanu sprzed niego
       cinema = !cinemaWas;
       break;
+    case 'help':
+      helpOpen = !helpWas; // klawisz ? zamyka otwartą nakładkę (onKey już ją zamknął)
+      hintT = 0;
+      break;
     case 'weather':
       weather.next(); // bez wpływu na fizykę jazdy
       break;
@@ -261,6 +275,11 @@ function action(a: Action): void {
 
 bindInput(screen.canvas, {
   onAction: action,
+  onKey(e) {
+    helpWas = helpOpen;
+    helpOpen = false;
+    return helpWas && e.key !== '?'; // inne klawisze tylko zamykają nakładkę
+  },
   onActivity() {
     const now = performance.now();
     cursorIdle.touch(now);
@@ -271,6 +290,10 @@ bindInput(screen.canvas, {
     audio.unlock();
   },
   onPointerDown(cx, cy) {
+    if (helpOpen) {
+      helpOpen = false; // kliknięcie zamyka nakładkę i nic więcej nie robi
+      return;
+    }
     const p = screen.toGame(cx, cy);
     if (hud.alpha >= 0.5 && routeMap.pointerDown(p.x, p.y)) return;
     const hit = hud.hit(p.x, p.y);
@@ -411,6 +434,8 @@ startLoop(
     hud.update(dt, !cinema && (!hudIdle.isIdle(now) || routeMap.dragging));
     cinemaCam.update(dt, cinema);
     cinemaWas = false;
+    helpWas = false;
+    hintT = Math.max(0, hintT - dt);
     // po kilku minutach bez dotykania scena wraca do jazdy automatycznej
     if (autoIdle.isIdle(now)) {
       cinema = true; // po 3 min bezczynności
@@ -519,6 +544,8 @@ startLoop(
       auto: state.autoDrive, signal: signalPreview(),
     });
     drawAlert();
+    drawHint(ctx, Math.min(1, hintT) * Math.min(1, (8 - hintT) * 2 + 0.01));
+    if (helpOpen) drawHelp(ctx);
     drawLimits();
     routeMap.draw(ctx, trainRef(), hud.alpha, (id, kind) => {
       const p = signals.posts.find((q) => q.id === id);

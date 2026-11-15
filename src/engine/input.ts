@@ -4,7 +4,7 @@
 export type Action =
   | 'horn-down' | 'horn-up' | 'toggle-night' | 'toggle-run' | 'faster' | 'slower'
   | 'toggle-mute' | 'fullscreen' | 'weather' | 'cinema' | 'wagon-add' | 'wagon-remove'
-  | 'poi-prev' | 'poi-next' | 'toggle-auto';
+  | 'poi-prev' | 'poi-next' | 'toggle-auto' | 'help';
 
 const KEYS: Record<string, Action> = {
   KeyH: 'horn-down',
@@ -29,6 +29,8 @@ export interface InputHandlers {
   onAction(a: Action): void;
   /** Każda aktywność (klawisz, ruch, dotyk) – reset bezczynności, odblokowanie audio. */
   onActivity(): void;
+  /** Wciśnięcie klawisza (po onActivity, przed akcją); true = klawisz zjedzony (np. zamyka nakładkę pomocy). */
+  onKey?(e: KeyboardEvent): boolean;
   /** Wciśnięcie wskaźnika (mysz/dotyk) – współrzędne clientX/Y. */
   onPointerDown(clientX: number, clientY: number): void;
   /** Ruch wskaźnika (przeciąganie mapy, podświetlenie punktów). */
@@ -38,8 +40,12 @@ export interface InputHandlers {
 
 export function bindInput(target: HTMLElement, h: InputHandlers): void {
   window.addEventListener('keydown', (e) => {
-    const a = KEYS[e.code];
+    const a: Action | undefined = e.key === '?' ? 'help' : KEYS[e.code];
     h.onActivity();
+    if (h.onKey?.(e)) {
+      e.preventDefault();
+      return;
+    }
     if (!a) return;
     e.preventDefault();
     if (e.repeat) return;
