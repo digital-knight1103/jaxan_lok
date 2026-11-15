@@ -98,15 +98,16 @@ export class CloudLayer {
   }
 
   /** right: udział światła z prawej (0 = rano, 1 = wieczór) – przenikanie wariantów. */
-  draw(ctx: CanvasRenderingContext2D, worldX: number, right = 0): void {
+  draw(ctx: CanvasRenderingContext2D, worldX: number, right = 0, alpha = 1): void {
     for (const c of this.clouds) {
       // pozycja w [0, WRAP), a chmura wychodząca z lewej krawędzi – ujemna
       let x = (((c.x - worldX * this.factor - c.drift) % WRAP) + WRAP) % WRAP;
       if (x > WRAP - c.sprite.width) x -= WRAP;
       if (x > W) continue;
+      ctx.globalAlpha = alpha;
       if (right < 0.98) ctx.drawImage(c.sprite, Math.floor(x), c.y);
       if (right > 0.02) {
-        ctx.globalAlpha = right >= 0.98 ? 1 : right;
+        ctx.globalAlpha = alpha * (right >= 0.98 ? 1 : right);
         ctx.drawImage(c.spriteR, Math.floor(x), c.y);
         ctx.globalAlpha = 1;
       }

@@ -36,6 +36,8 @@ export class AudioEngine {
   private hornAt = 0;
   private lastKmh = -1;
   private lastSq = 0;
+  private rain: { gain: GainNode } | null = null;
+  private rainLevel = 0;
 
   /** Tworzy AudioContext (wymaga gestu użytkownika). Bezpieczne do wielokrotnego wołania. */
   unlock(): void {
@@ -124,6 +126,25 @@ export class AudioEngine {
     so.start();
     this.squeal = { osc: so, gain: sg };
 
+    // deszcz: pętla szumu przez pasmo 600–5000 Hz, głośność ustawia setRain()
+    const rb = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const rd = rb.getChannelData(0);
+    for (let i = 0; i < rd.length; i++) rd[i] = Math.random() * 2 - 1;
+    const rs = ctx.createBufferSource();
+    rs.buffer = rb;
+    rs.loop = true;
+    const rhp = ctx.createBiquadFilter();
+    rhp.type = 'highpass';
+    rhp.frequency.value = 600;
+    const rlp = ctx.createBiquadFilter();
+    rlp.type = 'lowpass';
+    rlp.frequency.value = 5000;
+    const rg = ctx.createGain();
+    rg.gain.value = AUDIO.rain * this.rainLevel;
+    rs.connect(rhp).connect(rlp).connect(rg).connect(this.master);
+    rs.start();
+    this.rain = { gain: rg };
+
     if (this.muted) void ctx.suspend();
   }
 
@@ -136,6 +157,14 @@ export class AudioEngine {
     // wyciszony = zawieszony kontekst (zero pracy CPU)
     if (m) setTimeout(() => this.muted && void this.ctx?.suspend(), 200);
     else void this.ctx.resume();
+  }
+
+  /** Poziom deszczu 0..1 (szum w tle). Zmiana parametru tylko przy realnej różnicy. */
+  setRain(level: number): void {
+    const l = Math.max(0, Math.min(1, level));
+    if (Math.abs(l - this.rainLevel) < 0.02 && !(l === 0 && this.rainLevel !== 0)) return;
+    this.rainLevel = l;
+    if (this.ctx && this.rain) this.rain.gain.gain.setTargetAtTime(AUDIO.rain * l, this.ctx.currentTime, 0.5);
   }
 
   /** Wołane co klatkę. braking = skład zwalnia. */

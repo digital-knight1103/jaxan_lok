@@ -68,4 +68,6 @@ export const AUDIO = {
   squealRange: 0.025,
   /** Alarm RADIOSTOP (przejechanie sygnału STÓJ). */
   radiostop: 0.07,
+  /** Szum deszczu przy pełnym opadzie (cichy, w tle). */
+  rain: 0.05,
 } as const;

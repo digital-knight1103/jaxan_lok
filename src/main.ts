@@ -30,6 +30,8 @@ import { TravelAnim, type TravelFrame } from './scene/travel';
 import { REGISTRY, LANDMARK_ORDER } from './scene/segments/registry';
 import { DayCycle } from './scene/daycycle';
 import { Celestial } from './scene/celestial';
+import { Weather } from './scene/weather';
+import { RainFx, SnowFx, drawOvercast, drawSnowCover, drawSnowGround, drawTrackWeather, gloom } from './scene/weatherfx';
 import { LOCO_H, LOCO_W, PANTO_CONTACT } from './sprites/dragon2';
 import type { SegmentEnv } from './scene/segments/types';
 
@@ -49,6 +51,14 @@ let time = 0;
 const dayCycle = new DayCycle(params.has('t') ? Number(params.get('t')) : undefined);
 if (params.has('t')) dayCycle.auto = false;
 const celestial = new Celestial();
+// Pogoda zmienia się sama; ?w=cloudy|rain|snow ustawia ją na starcie (debug/zrzuty), W przełącza ręcznie.
+const weather = new Weather();
+if (params.has('w')) {
+  weather.set(params.get('w') as 'clear' | 'cloudy' | 'rain' | 'snow');
+  weather.update(60); // od razu pełne natężenie
+}
+const rainFx = new RainFx();
+const snowFx = new SnowFx();
 
 // Warstwy krajobrazu rysowane do osobnego płótna – nocą przyciemniane (source-atop)
 // bez ruszania nieba, które ma własne kolory nocne.
@@ -64,9 +74,10 @@ function layerCanvas(): [HTMLCanvasElement, CanvasRenderingContext2D] {
 }
 const [backCanvas, bctx] = layerCanvas();
 const [frontCanvas, fctx] = layerCanvas();
+const [gCanvas, gctx] = layerCanvas();
 
 /** Przyciemnienie nocą i ciepło zmierzchu – tylko na narysowanych pikselach. */
-function applyTint(c: CanvasRenderingContext2D, night: number, warmth: number, strength = 0.72, golden = 0): void {
+function applyTint(c: CanvasRenderingContext2D, night: number, warmth: number, strength = 0.72, golden = 0, dim = 0): void {
   c.globalCompositeOperation = 'source-atop';
   if (night > 0) {
     c.globalAlpha = night * strength;
@@ -76,6 +87,11 @@ function applyTint(c: CanvasRenderingContext2D, night: number, warmth: number, s
   if (warmth > 0 || golden > 0) {
     c.globalAlpha = warmth * 0.2 + golden * 0.12; // zmierzch + złota godzina
     c.fillStyle = PAL.warmTint;
+    c.fillRect(0, 0, W, H);
+  }
+  if (dim > 0) {
+    c.globalAlpha = dim; // pogoda: szare, chłodne światło pod chmurami
+    c.fillStyle = PAL.rainTint;
     c.fillRect(0, 0, W, H);
   }
   c.globalAlpha = 1;
@@ -200,6 +216,9 @@ function action(a: Action): void {
         if (state.targetKmh === 0) state.targetKmh = START_KMH;
       }
       break;
+    case 'weather':
+      weather.next(); // bez wpływu na fizykę jazdy
+      break;
     case 'poi-next':
     case 'poi-prev': {
       // w trakcie przejazdu liczymy od celu – można „przeskakiwać" kilka punktów
@@ -308,6 +327,9 @@ function simulate(dt: number): void {
   const target = Math.max(-6, Math.min(6, accel * 1.5));
   consist.shift += (target - consist.shift) * Math.min(1, dt * 1.2);
   clouds.update(dt);
+  weather.update(dt);
+  rainFx.update(dt, weather.rain, state.kmh);
+  snowFx.update(dt, weather.snow);
   birds.update(dt, Math.floor(worldX), time);
   if (braking && state.kmh > 3) sparks.brake(consist.wheelXs(), TRACK_Y - 1, 3 + state.kmh / 20, dt);
   // nocą pantograf iskrzy na przewodzie – częściej przy dużej prędkości
@@ -364,6 +386,7 @@ startLoop(
     }
     simulate(dt);
     audio.update(state.kmh, braking, dt);
+    audio.setRain(weather.rain);
   },
   () => {
     const camX = Math.floor(worldX);
@@ -381,6 +404,7 @@ startLoop(
       if (night > 0.05 && moon.up > -0.1) drawGlow(ctx, 'moon', moon.x, moon.y, night * 0.55); // księżycowa poświata
     }
     celestial.draw(ctx, dayCycle, time);
+    drawOvercast(ctx, weather.cloud);
 
     // 2. krajobraz za pociągiem (przyciemniany nocą) + światła okien i lamp
     bctx.clearRect(0, 0, W, H);
@@ -388,15 +412,18 @@ startLoop(
     const right = light.sunR / Math.max(1e-3, light.sunL + light.sunR);
     farthest.draw(bctx, worldX, right);
     far.draw(bctx, worldX, right);
-    clouds.draw(bctx, worldX, right);
+    clouds.draw(bctx, worldX, right, 1 - 0.85 * weather.cloud); // przy zachmurzeniu białe cumulusy ustępują szarej pokrywie
     near.draw(bctx, worldX, right);
     hills.draw(bctx, worldX, right);
     world.drawBack(bctx, env);
     drawPoles(bctx, camX);
     drawSignalPosts(bctx, camX, signals.posts);
     world.drawBed(bctx, env);
+    drawSnowCover(bctx, weather.snow); // biel na dachach, koronach i nasypie (pod torem)
+    drawSnowGround(bctx, weather.snow);
     drawTrack(bctx, camX);
-    applyTint(bctx, night, dayCycle.warmth, 0.72, dayCycle.golden);
+    drawTrackWeather(bctx, camX, weather.rain, weather.snow);
+    applyTint(bctx, night, dayCycle.warmth, 0.72, dayCycle.golden, gloom(weather.cloud, weather.rain));
     ctx.drawImage(backCanvas, 0, 0);
     world.drawLights(ctx, env);
     drawSignalLights(ctx, camX, signals.posts, night, time);
@@ -405,15 +432,26 @@ startLoop(
     fctx.clearRect(0, 0, W, H);
     consist.draw(fctx, light.sunL, light.sunR);
     drawWires(fctx, camX, sway);
-    birds.draw(fctx, camX, sway);
-    world.drawFront(fctx, env);
+    if (weather.snow > 0.01) {
+      // pierwszy plan osobno, żeby śnieg nie przykrył malowania taboru
+      gctx.clearRect(0, 0, W, H);
+      world.drawFront(gctx, env);
+      fore.draw(gctx, worldX);
+      drawSnowCover(gctx, weather.snow);
+      fctx.drawImage(gCanvas, 0, 0);
+    } else {
+      world.drawFront(fctx, env);
+      fore.draw(fctx, worldX);
+    }
     fore.draw(fctx, worldX);
-    applyTint(fctx, night, dayCycle.warmth * 0.6, 0.5, dayCycle.golden * 0.35); // pociąg – bohater sceny – czytelny także nocą
+    applyTint(fctx, night, dayCycle.warmth * 0.6, 0.5, dayCycle.golden * 0.35, gloom(weather.cloud, weather.rain) * 0.35); // pociąg – bohater sceny – czytelny także nocą
     ctx.drawImage(frontCanvas, 0, 0);
 
     // 4. światła pociągu i iskry (nie przyciemniane)
     consist.drawLights(ctx, night);
     sparks.draw(ctx);
+    rainFx.draw(ctx, weather.rain, night); // opady na wierzchu
+    snowFx.draw(ctx, weather.snow, worldX, time, night);
 
     // 5. szybki przejazd: rozmycie ruchu (smugi) i ściemnienie
     if (travelFx && travelFx.blur > 0) {

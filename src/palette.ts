@@ -328,6 +328,14 @@ export const PAL = {
   // --- węglarka: rdza i brud przy dole pudła ---
   rustDeep: '#4C2E20',
   grime: '#38322A',
+  // --- pogoda ---
+  rainTint: '#2C3846',
+  skyOvercast: '#8C97A3',
+  rainDrop: '#B4C6D8',
+  rainDropFar: '#8FA3B8',
+  railWet: '#C8DAEC',
+  snowFlake: '#F4F8FC',
+  snowCover: '#EAF1F7',
 } as const;
 
 export type PalKey = keyof typeof PAL;
