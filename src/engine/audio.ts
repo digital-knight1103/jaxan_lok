@@ -20,7 +20,11 @@ const JOINT_PX = 96;
 const AXLE_PX = 14;
 
 /** Akord syreny (Hz). */
-const HORN = [370, 466];
+/** Syrena dwutonowa jak w lokomotywie: najpierw ton niski, po chwili dołącza wysoki (każdy to kwinta/tercja). */
+const HORN_LOW = [277, 349];
+const HORN_HIGH = [370, 466];
+/** Po ilu sekundach trzymania wchodzi ton wysoki. */
+const HORN_SHIFT_S = 0.3;
 
 type Ctx = AudioContext;
 
@@ -29,7 +33,7 @@ export class AudioEngine {
   private ctx: Ctx | null = null;
   private master: GainNode | null = null;
   private motor: { osc: OscillatorNode; whine: OscillatorNode; gain: GainNode; filter: BiquadFilterNode; filter2: BiquadFilterNode } | null = null;
-  private horn: { gain: GainNode } | null = null;
+  private horn: { gain: GainNode; lo: GainNode; hi: GainNode } | null = null;
   private squeal: { osc: OscillatorNode; gain: GainNode } | null = null;
   private noise: AudioBuffer | null = null;
   private jointDist = 0;
@@ -99,15 +103,27 @@ export class AudioEngine {
     const hf = ctx.createBiquadFilter();
     hf.type = 'lowpass';
     hf.frequency.value = 1800;
-    for (const f of HORN) {
-      const o = ctx.createOscillator();
-      o.type = 'sawtooth';
-      o.frequency.value = f;
-      o.connect(hf);
-      o.start();
+    const lo = ctx.createGain();
+    const hi = ctx.createGain();
+    lo.gain.value = 1;
+    hi.gain.value = 0;
+    lo.connect(hf);
+    hi.connect(hf);
+    for (const [freqs, bus] of [[HORN_LOW, lo], [HORN_HIGH, hi]] as const) {
+      for (const f of freqs) {
+        // dwa lekko rozstrojone generatory na ton = „trzepot" mosiężnej membrany
+        for (const det of [-3, 3]) {
+          const o = ctx.createOscillator();
+          o.type = 'sawtooth';
+          o.frequency.value = f;
+          o.detune.value = det;
+          o.connect(bus);
+          o.start();
+        }
+      }
     }
     hf.connect(hg).connect(this.master);
-    this.horn = { gain: hg };
+    this.horn = { gain: hg, lo, hi };
 
     // pisk hamulców
     const sg = ctx.createGain();
@@ -224,6 +240,14 @@ export class AudioEngine {
     g.cancelScheduledValues(now);
     g.setValueAtTime(g.value, now);
     g.linearRampToValueAtTime(AUDIO.horn, now + 0.08); // narastanie
+    // ton niski od razu; po chwili przechodzi w wysoki (niski zostaje cicho w tle)
+    const { lo, hi } = this.horn;
+    for (const [n, v0, v1] of [[lo, 1, 0.4], [hi, 0, 1]] as const) {
+      n.gain.cancelScheduledValues(now);
+      n.gain.setValueAtTime(v0, now);
+      n.gain.setValueAtTime(v0, now + HORN_SHIFT_S);
+      n.gain.linearRampToValueAtTime(v1, now + HORN_SHIFT_S + 0.06);
+    }
     this.hornAt = now;
   }
 
