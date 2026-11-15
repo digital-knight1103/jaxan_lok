@@ -47,3 +47,17 @@ describe('Crossing', () => {
     for (let i = 1; i < ys.length; i++) expect(ys[i] - ys[i - 1]).toBeGreaterThanOrEqual(18);
   });
 });
+
+import { crossingKind, needsRp1 } from '../src/train/crossings';
+describe('rodzaj przejazdu (W 6a / W 6b)', () => {
+  it('ok. pół na pół, deterministyczny; Rp 1 tylko przy W 6b', () => {
+    let a = 0;
+    for (let i = 0; i < 400; i++) {
+      expect(crossingKind(i)).toBe(crossingKind(i));
+      if (crossingKind(i) === 'a') a++;
+      expect(needsRp1(i)).toBe(crossingKind(i) === 'b');
+    }
+    expect(a).toBeGreaterThan(140);
+    expect(a).toBeLessThan(260);
+  });
+});

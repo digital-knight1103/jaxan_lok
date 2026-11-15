@@ -139,9 +139,12 @@ function drawCars(ctx: CanvasRenderingContext2D, cars: OcCar[], sx: number): voi
 }
 
 /** Skład stojący na stacji w danym segmencie (deterministycznie z ziarna): ok. 45% stacji. */
+/** Podgląd (?station-train): na każdej stacji stoi skład na drugim torze. */
+export const preview = { forceParked: false };
+
 export function parkedAt(seed: number, segW: number): { dx: number; train: { cars: OcCar[]; len: number } } | null {
   const rnd = mulberry32(seed ^ 0x9a2b);
-  if (rnd() > 0.45) return null;
+  if (rnd() > 0.45 && !preview.forceParked) return null;
   const train = buildTrain(rnd() < 0.6 ? 'emu' : 'freight', rnd);
   return { dx: Math.max(10, Math.floor((segW - train.len) * (0.2 + rnd() * 0.6))), train };
 }

@@ -32,8 +32,8 @@ import { DayCycle } from './scene/daycycle';
 import { Celestial } from './scene/celestial';
 import { Weather, type WeatherKind } from './scene/weather';
 import { SeasonClock, SEASONS, syncLook, look, type Season } from './scene/season';
-import { OncomingTrains, drawSecondTrack, drawOncomingLights, parkedVisible, type OncomingKind } from './scene/oncoming';
-import { Crossings, occupies, type Extent } from './train/crossings';
+import { OncomingTrains, preview as oncomingPreview, drawSecondTrack, drawOncomingLights, parkedVisible, type OncomingKind } from './scene/oncoming';
+import { Crossings, occupies, needsRp1, type Extent } from './train/crossings';
 import { drawCrossingsFar, drawCrossingsNear, drawCrossingSlabs, drawCrossingLights, W6_DIST, type CrossingRef } from './scene/crossingfx';
 import { autumnLeaves, springPetals } from './scene/seasonfx';
 import { CinemaCam } from './scene/cinema';
@@ -81,6 +81,7 @@ const cinemaCam = new CinemaCam();
 const rainFx = new RainFx();
 const snowFx = new SnowFx();
 const oncoming = new OncomingTrains();
+if (params.has('station-train')) oncomingPreview.forceParked = true;
 // ?oncoming=emu|freight: skład z naprzeciwka od razu w kadrze (z ?stop – stoi; podgląd/zrzuty)
 if (params.get('oncoming') === 'emu' || params.get('oncoming') === 'freight') {
   const t = oncoming.spawn(params.get('oncoming') as OncomingKind, worldX);
@@ -472,9 +473,9 @@ function simulate(dt: number): void {
       const near = c.x > worldX - 900 && c.x < worldX + W + 900;
       const occ = occupies(c.x, ours) || others.some((e) => occupies(c.x, e));
       crossings.get(c.index).update(dt, occ, near);
-      // AUTO: przy wskaźniku W 6 maszynista sam daje sygnał Rp 1 „Baczność” (jeden długi dźwięk)
+      // AUTO: przy wskaźniku W 6b maszynista sam daje sygnał Rp 1 „Baczność” (jeden długi dźwięk); przy W 6a nie trąbi
       const w6 = c.x - W6_DIST;
-      if (state.autoDrive && !travel.active && Math.abs(front - prevFront) < 400 && prevFront < w6 && front >= w6 && !rp1Done.has(c.index)) {
+      if (state.autoDrive && !travel.active && Math.abs(front - prevFront) < 400 && prevFront < w6 && front >= w6 && needsRp1(c.index) && !rp1Done.has(c.index)) {
         rp1Done.add(c.index);
         audio.hornStart('lo');
         setTimeout(() => audio.hornStop('lo'), 1700);

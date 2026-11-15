@@ -410,3 +410,13 @@ rezygnacja. Każdy punkt osobnym commitem.
   wskaźnik W 6 (biały trójkąt wierzchołkiem w górę z sylwetką pojazdu; dokładny wzór z Ie-1 niezweryfikowany – brak dostępu do instrukcji) 380 px przed przejazdem;
   w AUTO przy W 6 sygnał Rp 1 (jeden długi klakson). Rogatki zamykają się też przed pociągiem z naprzeciwka. Kolejka aut (osobowe, traktor,
   wywrotka z kruszywem) czeka i rusza po otwarciu; nocą poświata świateł. Przejazdy to znaczniki na mapie trasy. Podgląd: `?crossing=N&stop`. Zrzuty `screenshots/c1..c3`.
+
+## Poprawki etapu 3 (v3.1)
+
+- [x] **Wskaźniki przed przejazdami** wg Dz.U. 2012 poz. 1042, § 112: **W 6a** (jedna biała trójkątna tablica wierzchołkiem ku górze z sylwetką pojazdu) – przejazd z systemem
+  powiązanym ze stacją, maszynista nie trąbi; **W 6b** (dwie takie tablice jedna pod drugą) – bez powiązania, w AUTO Rp 1 „Baczność” (jeden długi ton).
+  Rodzaj przejazdu losowany deterministycznie z indeksu segmentu (`crossingKind`, ok. 50/50 + test). Zwykły W 6 usunięty.
+- [x] **Drugi tor** sprawdzony na Sokółce i na moście na Wiśle: tor i jego sieć widoczne na całej długości, rysowane po warstwie tła, więc budynki go nie zasłaniają.
+  Zrzuty `screenshots/b5-sokolka-drugi-tor.png`, `b6-most-drugi-tor.png`.
+- [x] **Podgląd `?station-train`**: na każdej stacji stoi skład na drugim torze (zrzut b5).
+- [ ] Uwagi z odsłuchu (głośność przelotu/dzwonka) – w poleceniu pozostał szablon bez treści, nic nie zmieniono.

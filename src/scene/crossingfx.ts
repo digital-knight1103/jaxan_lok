@@ -7,7 +7,7 @@ import { TRACK_Y, W } from '../config';
 import { PAL } from '../palette';
 import { cached, makeSprite, rect, line, disc } from '../engine/sprite';
 import { bayer } from '../engine/pixbuf';
-import type { Crossing, Vehicle } from '../train/crossings';
+import { crossingKind, type Crossing, type CrossingKind, type Vehicle } from '../train/crossings';
 import { TRACK2_Y } from './oncoming';
 import { GROUND_Y } from './segments/common';
 
@@ -71,28 +71,33 @@ export function drawCrossingSlabs(ctx: CanvasRenderingContext2D, camX: number, l
 // --- wskaźnik W 6 ---
 const W6_W = 25;
 const W6_H = 22;
-const W6_POST = 24;
 
 /**
- * W 6: trójkąt równoboczny wierzchołkiem ku górze, białe pole z czarnym obramowaniem, w środku czarna
- * sylwetka pojazdu drogowego (znak „przejazd/ostrzeżenie"). Stoi przy torze tuż przed przejazdem.
+ * Wskaźnik W 6a (jedna tablica) albo W 6b (dwie, jedna pod drugą): biały trójkąt równoboczny
+ * wierzchołkiem ku górze z czarnym obramowaniem i czarną sylwetką pojazdu drogowego.
+ * Stoi przy torze przed przejazdem.
  */
-function w6Sprite(): HTMLCanvasElement {
-  return cached('w6', () =>
-    makeSprite(W6_W, W6_H + W6_POST, (c) => {
+function w6Sprite(kind: CrossingKind): HTMLCanvasElement {
+  const n = kind === 'b' ? 2 : 1;
+  const post = kind === 'b' ? 12 : 24;
+  return cached('w6' + kind, () =>
+    makeSprite(W6_W, W6_H * n + post, (c) => {
       const cx = W6_W >> 1;
-      rect(c, cx, W6_H - 1, 1, W6_POST + 1, PAL.sigMast);
-      rect(c, cx + 1, W6_H - 1, 1, W6_POST + 1, PAL.sigMastShade);
-      for (let r = 0; r < W6_H; r++) {
-        const hw = Math.round(((W6_W - 1) / 2) * (r / (W6_H - 1)));
-        rect(c, cx - hw, r, hw * 2 + 1, 1, PAL.ieBlack);
-        if (r >= 5 && r < W6_H - 3 && hw > 4) rect(c, cx - hw + 3, r, hw * 2 - 5, 1, PAL.ieWhite);
+      rect(c, cx, W6_H * n - 1, 1, post + 1, PAL.sigMast);
+      rect(c, cx + 1, W6_H * n - 1, 1, post + 1, PAL.sigMastShade);
+      for (let k = 0; k < n; k++) {
+        const y0 = k * W6_H;
+        for (let r = 0; r < W6_H; r++) {
+          const hw = Math.round(((W6_W - 1) / 2) * (r / (W6_H - 1)));
+          rect(c, cx - hw, y0 + r, hw * 2 + 1, 1, PAL.ieBlack);
+          if (r >= 5 && r < W6_H - 3 && hw > 4) rect(c, cx - hw + 3, y0 + r, hw * 2 - 5, 1, PAL.ieWhite);
+        }
+        // sylwetka auta (widok z boku) w dolnej części pola
+        rect(c, cx - 5, y0 + 15, 11, 3, PAL.ieBlack);
+        rect(c, cx - 3, y0 + 12, 7, 3, PAL.ieBlack);
+        rect(c, cx - 4, y0 + 18, 3, 1, PAL.ieBlack);
+        rect(c, cx + 2, y0 + 18, 3, 1, PAL.ieBlack);
       }
-      // sylwetka auta (widok z boku) w dolnej części pola
-      rect(c, cx - 5, 15, 11, 3, PAL.ieBlack);
-      rect(c, cx - 3, 12, 7, 3, PAL.ieBlack);
-      rect(c, cx - 4, 18, 3, 1, PAL.ieBlack);
-      rect(c, cx + 2, 18, 3, 1, PAL.ieBlack);
     }),
   );
 }
@@ -222,7 +227,7 @@ export function drawCrossingsFar(ctx: CanvasRenderingContext2D, camX: number, li
     // W 6 stoi przy torze ok. W6_DIST przed przejazdem
     const sx = Math.round(c.x - W6_DIST - camX);
     if (sx > -20 && sx < W + 20) {
-      const s = w6Sprite();
+      const s = w6Sprite(crossingKind(c.index));
       ctx.drawImage(s, sx - (s.width >> 1), TRACK2_Y + 6 - s.height);
     }
     if (cx < -80 || cx > W + 80) continue;

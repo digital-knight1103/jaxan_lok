@@ -19,6 +19,21 @@ export function occupies(cx: number, e: Extent): boolean {
   return e.front < cx + WARN_PX && e.tail > cx - CLEAR_PX;
 }
 
+/**
+ * Rodzaj przejazdu (rozporządzenie, Dz.U. 2012 poz. 1042, § 112): 'a' – samoczynny system powiązany
+ * ze stacją (wskaźnik W 6a, maszynista nie trąbi); 'b' – bez powiązania lub bez urządzeń
+ * (W 6b, maszynista daje Rp 1 „Baczność”). Deterministycznie z indeksu segmentu, ok. pół na pół.
+ */
+export type CrossingKind = 'a' | 'b';
+export function crossingKind(index: number): CrossingKind {
+  let h = Math.imul(index | 0, 2654435761) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0;
+  return (h >>> 16) % 2 === 0 ? 'a' : 'b';
+}
+
+/** Czy maszynista ma dać Rp 1 przy wskaźniku tego przejazdu. */
+export const needsRp1 = (index: number): boolean => crossingKind(index) === 'b';
+
 export type CarKind = 'car' | 'tractor' | 'truck';
 
 export interface Vehicle {
