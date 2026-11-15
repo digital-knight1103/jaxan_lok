@@ -24,7 +24,7 @@ export interface Screen {
   /** Kontekst bufora 640×360 – tu rysuje cała scena. */
   buffer: CanvasRenderingContext2D;
   /** Przenosi bufor na ekran w skali całkowitej. */
-  present(): void;
+  present(view?: { x: number; y: number; w: number; h: number }): void;
   toggleFullscreen(): void;
   /** Współrzędne zdarzenia (clientX/Y) → piksele gry. */
   toGame(clientX: number, clientY: number): { x: number; y: number };
@@ -66,9 +66,11 @@ export function createScreen(): Screen {
   return {
     buffer,
     canvas,
-    present() {
+    present(view) {
       // Letterbox malowany przy resize; tu tylko obraz gry.
-      ctx.drawImage(off, vp.offsetX, vp.offsetY, W * vp.scale, H * vp.scale);
+      // tryb kinowy: wycinek bufora rozciągany na cały kadr (tylko tam skala ułamkowa, bez wygładzania)
+      if (view && view.w < W) ctx.drawImage(off, view.x, view.y, view.w, view.h, vp.offsetX, vp.offsetY, W * vp.scale, H * vp.scale);
+      else ctx.drawImage(off, vp.offsetX, vp.offsetY, W * vp.scale, H * vp.scale);
     },
     toggleFullscreen() {
       if (document.fullscreenElement) void document.exitFullscreen();

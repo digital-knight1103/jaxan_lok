@@ -31,6 +31,7 @@ import { REGISTRY, LANDMARK_ORDER } from './scene/segments/registry';
 import { DayCycle } from './scene/daycycle';
 import { Celestial } from './scene/celestial';
 import { Weather } from './scene/weather';
+import { CinemaCam } from './scene/cinema';
 import { SpeedLimits, limitAt, capAt, nextChange, type Zone } from './train/limits';
 import { drawLimitSigns } from './scene/limitsigns';
 import { SEM_BEFORE_STATION_PX } from './train/signals';
@@ -61,6 +62,10 @@ if (params.has('w')) {
   weather.set(params.get('w') as 'clear' | 'cloudy' | 'rain' | 'snow');
   weather.update(60); // od razu pełne natężenie
 }
+// Tryb kinowy (C lub 3 min bezczynności): bez HUD i mapy, kamera przybliża/oddala/przesuwa się.
+let cinema = params.has('cinema');
+let cinemaWas = false;
+const cinemaCam = new CinemaCam();
 const rainFx = new RainFx();
 const snowFx = new SnowFx();
 
@@ -235,6 +240,10 @@ function action(a: Action): void {
         if (state.targetKmh === 0) state.targetKmh = START_KMH;
       }
       break;
+    case 'cinema':
+      // dowolne zdarzenie wejścia już wyłączyło tryb (onActivity) – C przełącza względem stanu sprzed niego
+      cinema = !cinemaWas;
+      break;
     case 'weather':
       weather.next(); // bez wpływu na fizykę jazdy
       break;
@@ -257,6 +266,8 @@ bindInput(screen.canvas, {
     cursorIdle.touch(now);
     hudIdle.touch(now);
     autoIdle.touch(now);
+    cinemaWas = cinema;
+    cinema = false; // dowolny klawisz lub ruch myszy = powrót
     audio.unlock();
   },
   onPointerDown(cx, cy) {
@@ -397,9 +408,12 @@ startLoop(
   (dt) => {
     const now = performance.now();
     document.body.classList.toggle('hide-cursor', cursorIdle.isIdle(now));
-    hud.update(dt, !hudIdle.isIdle(now) || routeMap.dragging);
+    hud.update(dt, !cinema && (!hudIdle.isIdle(now) || routeMap.dragging));
+    cinemaCam.update(dt, cinema);
+    cinemaWas = false;
     // po kilku minutach bez dotykania scena wraca do jazdy automatycznej
     if (autoIdle.isIdle(now)) {
+      cinema = true; // po 3 min bezczynności
       state.running = true;
       state.targetKmh = START_KMH;
       state.dayAuto = true;
@@ -510,7 +524,7 @@ startLoop(
       const p = signals.posts.find((q) => q.id === id);
       return p ? signalColor(kind, p, time) : PAL.sigMast;
     }, (x0, x1) => mapLimits.near(x0, x1));
-    screen.present();
+    screen.present(cinemaCam.view());
   },
 );
 
@@ -550,6 +564,7 @@ if (import.meta.env.DEV) {
         travel,
         signals,
         limits,
+        cinemaCam,
         get worldX() {
           return worldX;
         },
@@ -582,6 +597,6 @@ function drawLimits(): void {
     ctx,
     { limit, next: n ? { kmh: n.kmh, km: n.dist / KM_PX } : null, kmh: state.kmh, over },
     time,
-    Math.max(hud.alpha, over ? 1 : 0),
+    cinema ? 0 : Math.max(hud.alpha, over ? 1 : 0),
   );
 }
