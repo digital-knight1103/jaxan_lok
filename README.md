@@ -2,11 +2,13 @@
 
 Pikselowa, zapętlona scena kolejowa na ekran w biurze: lokomotywa **Newag Dragon 2 w barwach JAXAN**
 ciągnie węglarki **Eamos JAXAN** z kruszywem przez nieskończony krajobraz – złote łany pól, lasy,
-stalowe mosty i zakłady – po pętli **Sokółka** (stacja + żwirownia) → **most na Wiśle i Warszawa**
+polskie wsie (stodoły, koźlaki, bociany, kapliczki), mosty i zakłady – po pętli **Sokółka** (stacja + żwirownia) → **most na Wiśle i Warszawa**
 (panorama z Pałacem Kultury, Varso, Złotą 44) → **Kamieniec Ząbkowicki** (kamieniołom + stacja) → Sokółka…
 Przed każdą stacją stoją **semafory świetlne PKP**.
 
 Vite + TypeScript + Canvas 2D, zero zależności w czasie działania. Grafika i dźwięk generowane w kodzie.
+
+![Kamieniec Ząbkowicki nocą](screenshots/s2-kamieniec-stacja-noc.png)
 
 ## Uruchomienie
 
@@ -56,6 +58,48 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
 - Po **3 minutach bez dotykania** scena wraca do trybu „samograja”: jazda 80 km/h i automatyczny
   cykl dobowy (pełna doba = 8 minut).
 
+## Styl grafiki (styl2)
+
+Wzorzec: `reference/styl2.png`. Zasady obowiązujące w całej scenie:
+
+- **Jedno źródło światła** – ciepłe słońce (albo księżyc) z jednej strony. Krawędź sylwetki od strony
+  światła dostaje złoty **rim light**, przeciwna – chłodny, niebiesko-zielony cień. Nakładki liczone są
+  raz na segment (`engine/light.ts`), co klatkę zmienia się tylko ich krycie.
+- **5 tonów na materiał**: blask, światło, baza, półcień, cień (`segments/shade.ts`), przejścia
+  ditherowane macierzą Bayera 4×4 (`engine/pixbuf.ts`).
+- **Perspektywa powietrzna** – 6 planów zalesionych pasm z pojedynczymi koronami drzew
+  (`scene/ridges.ts`), im dalej, tym bledsze i bardziej niebieskie.
+- **Niebo** z ditherowanym gradientem i poświatą słońca/księżyca, chmury podświetlone od strony światła.
+- Malowanie JAXAN (pasy, szewrony, X, logo) ma pierwszeństwo – brud, dithering i rim light nie zmieniają
+  jego barw ani kształtów.
+
+Krajobraz między lokalizacjami losowany jest z odcinków: pola w bruzdach i łany zboża, las, nasyp,
+**wieś** (stodoła, wiatrak koźlak, gniazdo bociana, kapliczka, domy z dachówką, płoty, topole i wierzby
+głowiaste – `sprites/village.ts`), most i zakład.
+
+## Pory dnia
+
+Pełna doba trwa 8 minut (w trybie „samograja”), `N` przełącza noc/dzień.
+
+- **Złota godzina** rano i wieczorem – ciepłe, nisko padające światło i długi rim light,
+- **południe** – chłodniejsze, jasne światło z góry,
+- **noc** – księżycowa poświata, gwiazdy, okna i latarnie zapalone, reflektor lokomotywy.
+
+Kierunek rim light podąża za słońcem lub księżycem (`DayCycle.golden`, `DayCycle.light` w
+`scene/daycycle.ts`, z testami). Wzgórza i chmury mają po dwa warianty oświetlenia.
+
+## Tabor
+
+- **Newag Dragon 2 JAXAN** (`sprites/dragon2.ts`) – czarne pudło z magentowym pasem i zielonymi
+  szewronami, pas połysku, cień pod okapem, odbicie nieba w szybach, wycieraczki, drzwi z klamkami,
+  poręcze, bufory i sprzęgi, przewody, wózki ze sprężynami i maźnicami, pantograf.
+- **Węglarka Eamos JAXAN** (`sprites/eamos.ts`) – czarne pudło z pasem i dużym X z grubych ramion
+  (wg zdjęcia), ostojnica na wózkach Y25, koła na główce szyny, zderzaki na wysokości lokomotywy,
+  sprzęgi i przewody między pojazdami, rdza tylko na czarnych polach. Na nierównościach toru
+  podskakuje tylko pudło – wózki zostają na szynach.
+
+Zrzuty wszystkich lokalizacji w dzień i w nocy: `screenshots/s2-*-dzien.png`, `screenshots/s2-*-noc.png`.
+
 ## Jak dodać nowy odcinek krajobrazu / nowe miejsce
 
 1. Utwórz plik w `src/scene/segments/`, np. `lake.ts`, eksportujący obiekt `SegmentDef`
@@ -103,12 +147,14 @@ czcionka z polskimi znakami) w `engine/font.ts`.
 src/config.ts        stałe (wymiary, prędkości, czasy)
 src/palette.ts       wszystkie kolory
 src/main.ts          sklejenie modułów, kolejność rysowania warstw
-src/engine/          ekran i skalowanie, pętla, wejście, audio, czcionka, sprite'y, pula cząsteczek
-src/scene/           niebo, góry, chmury, wzgórza, tor, sieć trakcyjna, cykl dobowy, ptaki, iskry
-src/scene/segments/  odcinki trasy: pola, las, nasyp, most, zakład; Sokółka, Wisła, Warszawa,
-                     kamieniołom i stacja Kamieniec; stationkit.ts – wspólne elementy stacji
+src/engine/          ekran i skalowanie, pętla, wejście, audio, czcionka, sprite'y, pula cząsteczek;
+                     light.ts – rim light, pixbuf.ts – bufor pikseli i dithering
+src/scene/           niebo, pasma wzgórz (ridges.ts), chmury, tor, sieć trakcyjna, cykl dobowy, ptaki, iskry
+src/scene/segments/  odcinki trasy: pola, las, nasyp, wieś, most, zakład; Sokółka, Wisła, Warszawa,
+                     kamieniołom i stacja Kamieniec; stationkit.ts – wspólne elementy stacji,
+                     shade.ts – cieniowanie 5 tonów
 src/scene/signals.ts rysowanie semaforów i tarcz (światła z poświatą)
-src/sprites/         lokomotywa Dragon 2, węglarka Eamos, koła, drzewa
+src/sprites/         lokomotywa Dragon 2, węglarka Eamos, koła, drzewa (nature.ts), wieś (village.ts)
 src/train/           fizyka jazdy (z hamowaniem nagłym), skład, signals.ts – logika semaforów
 src/ui/hud.ts        panel sterowania
 src/ui/routemap.ts   mapa trasy (pasek na dole)

@@ -343,7 +343,7 @@ chłodne cienie, perspektywa powietrzna, dithering na przejściach, 5 tonów na 
 
 1. [x] **Etap D – domknięcie**: zrzuty dzień i noc każdej lokalizacji w `screenshots/s2-*-{dzien,noc}.png`
    (Sokółka stacja i żwirownia, Wisła, Warszawa, Kamieniec kamieniołom i stacja, wieś, pola, most).
-2. **Etap D – dokumentacja**: aktualizacja `README.md` (styl2, wieś, pory dnia, tabor).
+2. [x] **Etap D – dokumentacja**: aktualizacja `README.md` (styl2, wieś, pory dnia, tabor).
 3. **Etap D – lista do sprawdzenia na żywo**: obrót kół i sprzęgi przy podskokach, rim light wagonów
    wieczorem, płynność 60 FPS przy wjazdach lokalizacji, chmury nocą (lekko brązowe – do oceny).
 4. **Etap 2 – Załadunek w kopalni** (`hopperX`, `load` 0→1 w 3 s, test stanu wagonów).
