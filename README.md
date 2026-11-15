@@ -44,8 +44,12 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
 | Jazda AUTO / RĘCZNA | `A` | klik w pole AUTO/RĘCZNA pod panelem |
 | Skok do poprzedniego / następnego punktu trasy | `[` / `]` | klik w ikonę na mapie trasy |
 | Przewijanie podglądu mapy | – | przeciągnij pasek mapy myszą lub palcem |
-| Pogoda: pogodnie → pochmurno → deszcz → śnieg | `W` | – |
-| Tryb kinowy (bez HUD i mapy, kamera) | `C` | dowolny klawisz / ruch myszy = powrót |
+| Pogoda: AUTO → pogodnie → pochmurno → deszcz → mgła → śnieg → AUTO (napis z nazwą na ekranie) | `W` | przycisk pogody rozwija menu z ikonami |
+| Tryb kinowy (bez HUD i mapy, kamera) | `C` | przycisk 🎬 `C`; dowolny klawisz / ruch myszy = powrót |
+| Lista skrótów (nakładka) | `?` | przycisk `?`; zamyka dowolny klawisz lub kliknięcie |
+
+Przy każdym przycisku HUD widać literę skrótu (H, N, SPC = Spacja, <, >, M, F, W, C, ?). Przy pierwszym
+uruchomieniu przez 8 s pokazuje się podpowiedź „? – sterowanie” (zapamiętana w `localStorage`).
 
 - **Mapa trasy** (pasek na dole) pokazuje pociąg i punkty w promieniu ±10 km: stację Kamieniec
   Ząbkowicki 🏠, kopalnię ⛏, Sokółkę (żwirownia), Warszawę (PKiN) – pełne ikony – oraz mosty i zakłady (małe znaczniki – pełna ikona po najechaniu).
@@ -73,7 +77,10 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
   - **RĘCZNA**: bez kar – przy przekroczeniu panel miga na pomarańczowo (widać go nawet przy ukrytym HUD).
   - Na mapie trasy ograniczenia to cienkie paski pod torem (jasny = 100, pomarańczowy = 80, czerwony = 60).
 - **Pogoda** zmienia się sama co 3–10 min (pogodnie → pochmurno → deszcz → pogodnie, rzadko pochmurno →
-  śnieg), przejścia ~20 s; `W` przełącza ręcznie. Deszcz: skośne krople, mokre szyny, ciemniejsze niebo,
+  śnieg, rano czasem pogodnie → mgła), przejścia ~20 s. W trybie AUTO pogoda zmienia się sama; wybór ręczny
+  (klawisz `W` albo menu pod przyciskiem pogody) trzyma wybraną pogodę, AUTO wraca do zmian. Mgła: warstwy
+  gęstsze przy ziemi i w dolinach, dalsze plany prawie znikają, smugi dryfują; nocą reflektor lokomotywy
+  rysuje we mgle wyraźny stożek światła; pociąg zostaje czytelny. Deszcz: skośne krople, mokre szyny, ciemniejsze niebo,
   cichy szum (po włączeniu dźwięku). Śnieg: płatki z paralaksą, biel na dachach, koronach i ziemi.
   Pogoda nie wpływa na fizykę jazdy. Tabor nie jest oprószany śniegiem (malowanie JAXAN bez zmian).
 - **Tryb kinowy**: `C` albo 3 min bezczynności – chowa HUD i mapę, kamera powoli przybliża się (do ×1,3),
@@ -194,6 +201,6 @@ src/scene/travel.ts  animacja szybkiego przejazdu do punktu
 
 - `?x=22820` – start w danym miejscu trasy (px), `?stop` – pociąg stoi,
 - `?t=0.0` – pora doby (0 = północ, 0.5 = południe), wyłącza automat,
-- `?w=rain` (`cloudy`, `snow`) – pogoda na starcie, `?cinema` – tryb kinowy od startu,
+- `?w=rain` (`cloudy`, `snow`, `fog`, `clear`) – pogoda na starcie, `?cinema` – tryb kinowy od startu,
 - `?soak=8` – test wytrzymałości: symulacja 8 godzin bez rysowania; wynik w konsoli
   (liczba segmentów/canvasów/iskier musi być stała).

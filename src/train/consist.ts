@@ -76,7 +76,8 @@ export class Consist {
   }
 
   /** Światła lokomotywy nocą: reflektory, stożek światła na torze, czerwone tylne. */
-  drawLights(ctx: CanvasRenderingContext2D, night: number): void {
+  /** fog 0..1: we mgle stożek reflektora jest szerszy, dłuższy i wyraźnie widoczny. */
+  drawLights(ctx: CanvasRenderingContext2D, night: number, fog = 0): void {
     if (night <= 0.02) return;
     const X = this.locoX;
     const top = TRACK_Y - LOCO_H + this.bounce(-1);
@@ -85,16 +86,17 @@ export class Consist {
     const ly = top + low.y;
     // stożek światła rozszerzający się ku szynom
     ctx.fillStyle = PAL.headlight;
-    for (let dx = 0; dx < 150; dx++) {
-      const y0 = Math.round(ly - dx * 0.06);
-      const y1 = Math.min(TRACK_Y + 6, Math.round(ly + 1 + dx * 0.3));
-      ctx.globalAlpha = night * 0.3 * (1 - dx / 150);
+    const len = 150 + Math.round(fog * 90);
+    for (let dx = 0; dx < len; dx++) {
+      const y0 = Math.round(ly - dx * (0.06 + fog * 0.1));
+      const y1 = Math.min(TRACK_Y + 6 + Math.round(fog * 4), Math.round(ly + 1 + dx * (0.3 + fog * 0.06)));
+      ctx.globalAlpha = night * (0.3 + fog * 0.3) * (1 - dx / len);
       ctx.fillRect(lx + dx, y0, 1, y1 - y0);
     }
     // reflektory i poświata
     for (const l of LOCO_LIGHTS.front) {
       ctx.globalAlpha = night * 0.45;
-      disc(ctx, X + l.x, top + l.y, 3, PAL.headlight);
+      disc(ctx, X + l.x, top + l.y, 3 + Math.round(fog * 2), PAL.headlight);
       ctx.globalAlpha = night;
       ctx.fillStyle = PAL.headlight;
       ctx.fillRect(X + l.x - 1, top + l.y, 2, 1);

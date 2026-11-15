@@ -336,6 +336,8 @@ export const PAL = {
   railWet: '#C8DAEC',
   snowFlake: '#F4F8FC',
   snowCover: '#EAF1F7',
+  fog: '#C4CED8',
+  fogNight: '#232C3C',
   // --- wskaźniki Ie-1 (W 8, W 9) ---
   ieBlack: '#16161A',
   ieWhite: '#F0F0F2',

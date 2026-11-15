@@ -376,6 +376,12 @@ rezygnacja. Każdy punkt osobnym commitem.
   Deszcz: skośne krople w 2 głębiach z rozpryskami, mokry połysk szyn, ciemniejsze niebo, cichy szum
   (`audio.setRain`). Śnieg: płatki z paralaksą, biel na górnych krawędziach (dachy, korony, nasyp) i na ziemi,
   bez oprószania taboru. Zrzuty: `screenshots/w1-deszcz.png`, `w2-snieg.png`.
+- [x] **HUD: skróty i pomoc** (15.11): przyciski 🎬 `C` (tryb kinowy), pogody `W` i `?`, litera skrótu pod każdym
+  przyciskiem, nakładka pomocy (`?`, zamyka dowolny klawisz/klik), podpowiedź „? – sterowanie” 8 s przy pierwszym starcie (localStorage).
+- [x] **Mgła i ręczny wybór pogody** (15.11): `Weather` ma tryb AUTO/ręczny (`choice`, `cycle`, `choose`), nowy rodzaj `fog`
+  (rano w AUTO czasem po pogodnym; testy w `tests/weather.test.ts`). Rysowanie: zasłony mgły po każdym planie tła
+  (dalsze znikają), mgła przy ziemi i smugi, poszerzony stożek reflektora nocą. Menu pogody w HUD, `W` cyklicznie + napis,
+  `?w=fog`. Malowanie taboru bez zmian (mgła tylko za pociągiem i lekkie smugi nad kołami).
 - [x] **Ograniczenia prędkości wg Ie-1** (`train/limits.ts` + `tests/limits.test.ts`, `scene/limitsigns.ts`):
   W 8 (biały trójkąt wierzchołkiem w dół, czarna liczba w dziesiątkach km/h, w odległości drogi hamowania),
   W 9 początek (kąt wierzchołkiem w dół) i koniec (odwrotna strona – kąt w górę); wzór z Ie-1 § 16 pkt 7–8.

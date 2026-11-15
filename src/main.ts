@@ -23,20 +23,20 @@ import { stepSpeed, adjustTarget, emergencyStep } from './train/physics';
 import { SignalSystem } from './train/signals';
 import { drawSignalPosts, drawSignalLights, signalColor } from './scene/signals';
 import { drawText, textWidth } from './engine/font';
-import { Hud, drawLimitPanel, drawHelp, drawHint } from './ui/hud';
+import { Hud, drawLimitPanel, drawHelp, drawHint, drawToast, WEATHER_NAMES } from './ui/hud';
 import { RouteMap } from './ui/routemap';
 import { RouteIndex, ANCHOR_SCREEN_X, KM_PX, stopWorldX, type Poi } from './scene/routeindex';
 import { TravelAnim, type TravelFrame } from './scene/travel';
 import { REGISTRY, LANDMARK_ORDER } from './scene/segments/registry';
 import { DayCycle } from './scene/daycycle';
 import { Celestial } from './scene/celestial';
-import { Weather } from './scene/weather';
+import { Weather, type WeatherKind } from './scene/weather';
 import { CinemaCam } from './scene/cinema';
 import { SpeedLimits, limitAt, capAt, nextChange, type Zone } from './train/limits';
 import { drawLimitSigns } from './scene/limitsigns';
 import { SEM_BEFORE_STATION_PX } from './train/signals';
 import { WAGON_W } from './sprites/eamos';
-import { RainFx, SnowFx, drawOvercast, drawSnowCover, drawSnowGround, drawTrackWeather, gloom } from './scene/weatherfx';
+import { RainFx, SnowFx, drawFogSky, drawFogVeil, drawFogWisps, drawOvercast, drawSnowCover, drawSnowGround, drawTrackWeather, gloom } from './scene/weatherfx';
 import { LOCO_H, LOCO_W, PANTO_CONTACT } from './sprites/dragon2';
 import type { SegmentEnv } from './scene/segments/types';
 
@@ -59,7 +59,7 @@ const celestial = new Celestial();
 // Pogoda zmienia się sama; ?w=cloudy|rain|snow ustawia ją na starcie (debug/zrzuty), W przełącza ręcznie.
 const weather = new Weather();
 if (params.has('w')) {
-  weather.set(params.get('w') as 'clear' | 'cloudy' | 'rain' | 'snow');
+  weather.setManual(params.get('w') as WeatherKind);
   weather.update(60); // od razu pełne natężenie
 }
 // Tryb kinowy (C lub 3 min bezczynności): bez HUD i mapy, kamera przybliża/oddala/przesuwa się.
@@ -195,12 +195,20 @@ let pointerHorn = false;
 let helpOpen = false;
 let helpWas = false;
 let hintT = 0;
+// krótki napis z nazwą wybranej pogody
+let toastT = 0;
+let toastText = '';
 try {
   if (!localStorage.getItem('jaxan.hintSeen')) {
     hintT = 8;
     localStorage.setItem('jaxan.hintSeen', '1');
   }
 } catch { /* localStorage niedostępny – podpowiedź pokaże się przy każdym starcie */ }
+
+function toast(): void {
+  toastText = `POGODA: ${WEATHER_NAMES[weather.choice]}`;
+  toastT = 2;
+}
 
 function action(a: Action): void {
   switch (a) {
@@ -259,7 +267,12 @@ function action(a: Action): void {
       hintT = 0;
       break;
     case 'weather':
-      weather.next(); // bez wpływu na fizykę jazdy
+      hud.menuOpen = false;
+      weather.cycle(); // bez wpływu na fizykę jazdy
+      toast();
+      break;
+    case 'weather-menu':
+      hud.menuOpen = !hud.menuOpen;
       break;
     case 'poi-next':
     case 'poi-prev': {
@@ -297,6 +310,13 @@ bindInput(screen.canvas, {
     const p = screen.toGame(cx, cy);
     if (hud.alpha >= 0.5 && routeMap.pointerDown(p.x, p.y)) return;
     const hit = hud.hit(p.x, p.y);
+    if (hit && 'weather' in hit) {
+      weather.choose(hit.weather);
+      hud.menuOpen = false;
+      toast();
+      return;
+    }
+    if (!(hit && 'action' in hit && hit.action === 'weather-menu')) hud.menuOpen = false; // klik poza menu je zamyka
     if (hit && 'action' in hit) {
       action(hit.action);
       if (hit.action === 'horn-down') pointerHorn = true;
@@ -383,7 +403,8 @@ function simulate(dt: number): void {
   const target = Math.max(-6, Math.min(6, accel * 1.5));
   consist.shift += (target - consist.shift) * Math.min(1, dt * 1.2);
   clouds.update(dt);
-  weather.update(dt);
+  // rano (wschód–przedpołudnie) automat może wywołać mgłę
+  weather.update(dt, dayCycle.t > 0.2 && dayCycle.t < 0.42);
   rainFx.update(dt, weather.rain, state.kmh);
   snowFx.update(dt, weather.snow);
   birds.update(dt, Math.floor(worldX), time);
@@ -436,6 +457,8 @@ startLoop(
     cinemaWas = false;
     helpWas = false;
     hintT = Math.max(0, hintT - dt);
+    toastT = Math.max(0, toastT - dt);
+    if (hud.alpha < 0.5) hud.menuOpen = false;
     // po kilku minutach bez dotykania scena wraca do jazdy automatycznej
     if (autoIdle.isIdle(now)) {
       cinema = true; // po 3 min bezczynności
@@ -466,21 +489,31 @@ startLoop(
     }
     celestial.draw(ctx, dayCycle, time);
     drawOvercast(ctx, weather.cloud);
+    drawFogSky(ctx, weather.fog, night);
 
     // 2. krajobraz za pociągiem (przyciemniany nocą) + światła okien i lamp
     bctx.clearRect(0, 0, W, H);
     // udział światła z prawej: rano 0 (słońce z lewej), wieczorem 1
     const right = light.sunR / Math.max(1e-3, light.sunL + light.sunR);
+    // mgła: po każdym planie zasłona – im dalszy plan, tym mocniej znika (doliny gęstsze)
+    const fogW = weather.fog;
     farthest.draw(bctx, worldX, right);
+    drawFogVeil(bctx, fogW, 1.1);
     far.draw(bctx, worldX, right);
-    clouds.draw(bctx, worldX, right, 1 - 0.85 * weather.cloud); // przy zachmurzeniu białe cumulusy ustępują szarej pokrywie
+    drawFogVeil(bctx, fogW, 0.9);
+    clouds.draw(bctx, worldX, right, (1 - 0.85 * weather.cloud) * (1 - fogW)); // przy zachmurzeniu białe cumulusy ustępują szarej pokrywie
     near.draw(bctx, worldX, right);
+    drawFogVeil(bctx, fogW, 0.65);
     hills.draw(bctx, worldX, right);
+    drawFogVeil(bctx, fogW, 0.4);
     world.drawBack(bctx, env);
     drawPoles(bctx, camX);
     drawSignalPosts(bctx, camX, signals.posts);
     drawLimitSigns(bctx, camX, zones);
     world.drawBed(bctx, env);
+    drawFogVeil(bctx, fogW, 0.45, TRACK_Y - 70, TRACK_Y + 10); // mgła przy ziemi: tło toru zlewa się z mgłą
+    drawFogVeil(bctx, fogW, 0.3, TRACK_Y + 8, TRACK_Y + 9); // lekki welon także na polach przed torem
+    drawFogWisps(bctx, fogW, worldX, time, 0, TRACK_Y - 40, TRACK_Y + 4, 0.35);
     drawSnowCover(bctx, weather.snow); // biel na dachach, koronach i nasypie (pod torem)
     drawSnowGround(bctx, weather.snow);
     drawTrack(bctx, camX);
@@ -510,7 +543,9 @@ startLoop(
     ctx.drawImage(frontCanvas, 0, 0);
 
     // 4. światła pociągu i iskry (nie przyciemniane)
-    consist.drawLights(ctx, night);
+    consist.drawLights(ctx, night, weather.fog);
+    // smugi tuż nad podkładami – nad kołami, malowanie wagonów zostaje czyste
+    drawFogWisps(ctx, fogW, worldX, time, night, TRACK_Y - 3, TRACK_Y + 9, 0.3);
     sparks.draw(ctx);
     rainFx.draw(ctx, weather.rain, night); // opady na wierzchu
     snowFx.draw(ctx, weather.snow, worldX, time, night);
@@ -541,9 +576,10 @@ startLoop(
     hud.draw(ctx, {
       kmh: state.kmh, targetKmh: state.targetKmh, running: state.running,
       night: night > 0.5, muted: state.muted, horn: state.horn,
-      auto: state.autoDrive, signal: signalPreview(),
+      auto: state.autoDrive, weather: weather.choice, signal: signalPreview(),
     });
     drawAlert();
+    drawToast(ctx, toastText, toastT);
     drawHint(ctx, Math.min(1, hintT) * Math.min(1, (8 - hintT) * 2 + 0.01));
     if (helpOpen) drawHelp(ctx);
     drawLimits();

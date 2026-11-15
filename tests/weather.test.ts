@@ -9,11 +9,38 @@ describe('Weather', () => {
     expect(w.kind).toBe('clear');
     expect(w.rain + w.snow + w.cloud).toBe(0);
   });
-  it('ręczny cykl: pogodnie → pochmurno → deszcz → śnieg → pogodnie', () => {
+  it('ręczny cykl W: AUTO → pogodnie → pochmurno → deszcz → mgła → śnieg → AUTO', () => {
     const w = new Weather(() => 0.5);
-    const seq = [w.kind];
-    for (let i = 0; i < 4; i++) { w.next(); seq.push(w.kind); }
-    expect(seq).toEqual(['clear', 'cloudy', 'rain', 'snow', 'clear']);
+    const seq = [w.choice];
+    for (let i = 0; i < 6; i++) { w.cycle(); seq.push(w.choice); }
+    expect(seq).toEqual(['auto', 'clear', 'cloudy', 'rain', 'fog', 'snow', 'auto']);
+  });
+  it('wybór ręczny trzyma pogodę, AUTO wraca do zmian', () => {
+    const w = new Weather(() => 0.5);
+    w.setManual('fog');
+    run(w, 2000);
+    expect(w.kind).toBe('fog');
+    expect(w.auto).toBe(false);
+    w.setAuto();
+    expect(w.choice).toBe('auto');
+    run(w, 700);
+    expect(w.kind).toBe('clear'); // mgła → pogodnie
+  });
+  it('mgła rośnie do 1 i gaśnie, nie nakłada się z opadami', () => {
+    const w = new Weather(() => 0.5);
+    w.setManual('fog'); run(w, 25);
+    expect(w.fog).toBe(1);
+    expect(w.rain + w.snow).toBe(0);
+    w.setManual('rain'); run(w, 25);
+    expect(w.fog).toBe(0);
+  });
+  it('automat: mgła pojawia się po pogodnym tylko rano', () => {
+    const morning = new Weather(() => 0.1);
+    morning.update(1000, true);
+    expect(morning.kind).toBe('fog');
+    const day = new Weather(() => 0.1);
+    day.update(1000, false);
+    expect(day.kind).toBe('cloudy');
   });
   it('przejście trwa ok. 20 s: w połowie ok. 0.5, po czasie pełne', () => {
     const w = new Weather(() => 0.5);

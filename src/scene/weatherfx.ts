@@ -3,6 +3,7 @@
 // Cząsteczki w tablicach o stałej pojemności – zero alokacji w pętli.
 import { W, H, TRACK_Y } from '../config';
 import { PAL } from '../palette';
+import { lerpColor } from '../engine/color';
 
 /** Siła przyciemnienia sceny przez pogodę 0..1 (do applyTint). */
 export function gloom(cloud: number, rain: number): number {
@@ -227,4 +228,65 @@ export function drawSnowGround(dst: CanvasRenderingContext2D, level: number): vo
   dst.fillRect(0, TRACK_Y + 7, W, H - TRACK_Y - 7);
   dst.globalAlpha = 1;
   dst.globalCompositeOperation = 'source-over';
+}
+
+// --- mgła ---
+const smoothstep = (u: number) => {
+  const k = Math.max(0, Math.min(1, u));
+  return k * k * (3 - 2 * k);
+};
+
+/** Kolor mgły: jasny szary w dzień, ciemny granat nocą. */
+export function fogColor(night: number): string {
+  return lerpColor(PAL.fog, PAL.fogNight, night);
+}
+
+/** Mgliste „niebo”: poświata przy horyzoncie (rysowana pod grzbietami – te zlewają się z nią). */
+export function drawFogSky(ctx: CanvasRenderingContext2D, fog: number, night: number): void {
+  if (fog <= 0.01) return;
+  ctx.fillStyle = fogColor(night);
+  for (let y = 0; y < 270; y += 2) {
+    ctx.globalAlpha = fog * (0.3 + 0.65 * smoothstep((y - 40) / 170));
+    ctx.fillRect(0, y, W, 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/**
+ * Zasłona mgły na już narysowanych pikselach warstwy (source-atop): gęstsza ku dołowi
+ * (doliny, podnóża), strength = ile z tego zostaje dla danego planu (dalsze znikają prawie całkiem).
+ * Kolor: dzień jasny; nocą ciemnieje razem z całą warstwą przez applyTint.
+ */
+export function drawFogVeil(c: CanvasRenderingContext2D, fog: number, strength: number, y0 = 150, y1 = 270): void {
+  if (fog <= 0.01) return;
+  c.globalCompositeOperation = 'source-atop';
+  c.fillStyle = PAL.fog;
+  for (let y = y0; y < H; y += 2) {
+    c.globalAlpha = Math.min(1, fog * strength * (0.35 + 0.65 * smoothstep((y - y0) / (y1 - y0))));
+    c.fillRect(0, y, W, 2);
+  }
+  c.globalAlpha = 1;
+  c.globalCompositeOperation = 'source-over';
+}
+
+/** Lekko przesuwające się smugi mgły tuż nad ziemią (miękkie, trzy pasy ubywające ku brzegom). */
+export function drawFogWisps(
+  ctx: CanvasRenderingContext2D, fog: number, worldX: number, time: number, night: number,
+  yMin: number, yMax: number, alpha: number,
+): void {
+  if (fog <= 0.01) return;
+  ctx.fillStyle = fogColor(night);
+  const span = W + 320;
+  for (let i = 0; i < 14; i++) {
+    const par = 0.25 + 0.5 * hash(i + 11); // paralaksa: dalsze smugi wolniej
+    const x = ((hash(i * 7 + 3) * span - worldX * par + time * (3 + 5 * hash(i + 5))) % span + span) % span - 160;
+    const w = 90 + hash(i + 31) * 160;
+    const y = yMin + hash(i + 17) * (yMax - yMin);
+    for (let k = 0; k < 3; k++) {
+      ctx.globalAlpha = fog * alpha * (k === 1 ? 1 : 0.55);
+      const kw = w * (k === 1 ? 1 : 0.7);
+      ctx.fillRect(Math.round(x + (w - kw) / 2), Math.round(y + k * 2), Math.round(kw), 2);
+    }
+  }
+  ctx.globalAlpha = 1;
 }

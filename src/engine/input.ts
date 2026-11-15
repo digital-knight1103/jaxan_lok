@@ -4,7 +4,7 @@
 export type Action =
   | 'horn-down' | 'horn-up' | 'toggle-night' | 'toggle-run' | 'faster' | 'slower'
   | 'toggle-mute' | 'fullscreen' | 'weather' | 'cinema' | 'wagon-add' | 'wagon-remove'
-  | 'poi-prev' | 'poi-next' | 'toggle-auto' | 'help';
+  | 'poi-prev' | 'poi-next' | 'toggle-auto' | 'help' | 'weather-menu';
 
 const KEYS: Record<string, Action> = {
   KeyH: 'horn-down',

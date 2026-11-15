@@ -4,6 +4,7 @@ import { MAX_KMH, SPEED_STEP_KMH, W, H } from '../config';
 import { PAL } from '../palette';
 import { drawText, textWidth } from '../engine/font';
 import type { Action } from '../engine/input';
+import type { WeatherChoice } from '../scene/weather';
 
 type Icon = string[];
 
@@ -19,6 +20,10 @@ const ICONS: Record<string, Icon> = {
   muted: ['...#.....', '..##.....', '####.#.#.', '####..#..', '####.#.#.', '####.....', '..##.....', '...#.....', '.........'],
   cinema: ['.........', '#########', '#.#.#.#.#', '#########', '#.......#', '#.......#', '#.......#', '#########', '.........'],
   help: ['..#####..', '.##...##.', '.##...##.', '.....##..', '....##...', '....##...', '.........', '....##...', '....##...'],
+  cloudy: ['.........', '...##....', '..####.#.', '.#######.', '#########', '#########', '.#######.', '.........', '.........'],
+  rain: ['..###....', '.#####.#.', '#########', '#########', '.#######.', '.#..#..#.', '..#..#...', '.#..#..#.', '.........'],
+  fog: ['.........', '.#######.', '.........', '#######..', '.........', '..#######', '.........', '.#######.', '.........'],
+  snow: ['....#....', '.#..#..#.', '..#.#.#..', '...###...', '#########', '...###...', '..#.#.#..', '.#..#..#.', '....#....'],
   full: ['###...###', '#.......#', '#.......#', '.........', '.........', '.........', '#.......#', '#.......#', '###...###'],
 };
 
@@ -31,9 +36,22 @@ export interface HudState {
   horn: boolean;
   /** Jazda automatyczna czy ręczna. */
   auto: boolean;
+  /** Wybór pogody: AUTO albo konkretna. */
+  weather: WeatherChoice;
   /** Najbliższy sygnał przed pociągiem (podgląd). */
   signal: { label: string; km: number; color: string } | null;
 }
+
+export const WEATHER_NAMES: Record<WeatherChoice, string> = {
+  auto: 'AUTO', clear: 'POGODNIE', cloudy: 'POCHMURNO', rain: 'DESZCZ', fog: 'MGŁA', snow: 'ŚNIEG',
+};
+const WEATHER_ICON: Record<WeatherChoice, string> = {
+  auto: 'cloudy', clear: 'sun', cloudy: 'cloudy', rain: 'rain', fog: 'fog', snow: 'snow',
+};
+/** Kolejność w menu pogody. */
+const WEATHER_ITEMS: WeatherChoice[] = ['auto', 'clear', 'cloudy', 'rain', 'fog', 'snow'];
+/** Czy menu pogody jest rozwinięte (ustawiane przez Hud.menuOpen). */
+let weatherMenuOpen = false;
 
 interface Button { action: Action; key: string; icon: (s: HudState) => string; active: (s: HudState) => boolean }
 
@@ -45,6 +63,7 @@ const BUTTONS: Button[] = [
   { action: 'faster', key: '>', icon: () => 'faster', active: () => false },
   { action: 'toggle-mute', key: 'M', icon: (s) => (s.muted ? 'muted' : 'sound'), active: (s) => !s.muted },
   { action: 'fullscreen', key: 'F', icon: () => 'full', active: () => false },
+  { action: 'weather-menu', key: 'W', icon: (s) => WEATHER_ICON[s.weather], active: (_s) => weatherMenuOpen },
   { action: 'cinema', key: 'C', icon: () => 'cinema', active: () => false },
   { action: 'help', key: '?', icon: () => 'help', active: () => false },
 ];
@@ -64,10 +83,21 @@ const BTN_Y = PY + 31;
 const BTN_X0 = PX + 5;
 const BAR = { x: PX + 62, y: PY + 17, w: PW - 62 - 6, h: 5 };
 
-export type HudHit = { action: Action } | { setTarget: number } | null;
+export type HudHit = { action: Action } | { setTarget: number } | { weather: WeatherChoice } | null;
+
+// menu pogody – rząd ikon pod paskiem sygnału
+const MENU_Y = PY + PH + 2 + SIG_H + 2;
+const MENU_H = 30;
+const MENU_ITEM = Math.floor((PW - 10) / 6);
 
 export class Hud {
   alpha = 1;
+  get menuOpen(): boolean {
+    return weatherMenuOpen;
+  }
+  set menuOpen(v: boolean) {
+    weatherMenuOpen = v;
+  }
 
   /** Płynne pojawianie się / chowanie. */
   update(dt: number, visible: boolean): void {
@@ -79,6 +109,10 @@ export class Hud {
   /** Trafienie w przycisk lub suwak prędkości (tylko gdy HUD widoczny). */
   hit(x: number, y: number): HudHit {
     if (this.alpha < 0.5) return null;
+    if (weatherMenuOpen && y >= MENU_Y + 3 && y < MENU_Y + 18) {
+      const i = Math.floor((x - PX - 5) / MENU_ITEM);
+      if (i >= 0 && i < 6) return { weather: WEATHER_ITEMS[i] };
+    }
     for (let i = 0; i < BUTTONS.length; i++) {
       const bx = BTN_X0 + i * BTN_STEP;
       if (x >= bx && x < bx + BTN && y >= BTN_Y && y < BTN_Y + BTN) return { action: BUTTONS[i].action };
@@ -95,7 +129,8 @@ export class Hud {
 
   /** Czy punkt leży na panelu (klik w panel nie trąbi itp.). */
   contains(x: number, y: number): boolean {
-    return this.alpha >= 0.5 && x >= PX && x < PX + PW && y >= PY && y < PY + PH + 2 + SIG_H;
+    const bottom = PY + PH + 2 + SIG_H + (weatherMenuOpen ? 2 + MENU_H : 0);
+    return this.alpha >= 0.5 && x >= PX && x < PX + PW && y >= PY && y < bottom;
   }
 
   draw(ctx: CanvasRenderingContext2D, s: HudState): void {
@@ -171,8 +206,55 @@ export class Hud {
       }
       drawText(ctx, b.key, bx + ((BTN - textWidth(b.key)) >> 1), BTN_Y + BTN + 3, PAL.hudDim);
     });
+    if (weatherMenuOpen) this.drawMenu(ctx, s);
     ctx.globalAlpha = 1;
   }
+
+  /** Menu pogody: ikony AUTO / pogodnie / pochmurno / deszcz / mgła / śnieg + nazwa wyboru. */
+  private drawMenu(ctx: CanvasRenderingContext2D, s: HudState): void {
+    ctx.fillStyle = PAL.hudBg;
+    ctx.fillRect(PX, MENU_Y, PW, MENU_H);
+    ctx.fillStyle = PAL.locoMagenta;
+    ctx.fillRect(PX, MENU_Y, PW, 1);
+    ctx.fillRect(PX, MENU_Y + MENU_H - 1, PW, 1);
+    ctx.fillRect(PX, MENU_Y, 1, MENU_H);
+    ctx.fillRect(PX + PW - 1, MENU_Y, 1, MENU_H);
+    WEATHER_ITEMS.forEach((c, i) => {
+      const bx = PX + 5 + i * MENU_ITEM;
+      const bw = MENU_ITEM - 2;
+      const on = s.weather === c;
+      ctx.fillStyle = on ? PAL.jaxanGreenShade : PAL.hudButton;
+      ctx.fillRect(bx, MENU_Y + 3, bw, 15);
+      ctx.fillStyle = on ? PAL.jaxanGreen : PAL.hudButtonHi;
+      ctx.fillRect(bx, MENU_Y + 3, bw, 1);
+      if (c === 'auto') {
+        drawText(ctx, 'AUTO', bx + ((bw - textWidth('AUTO')) >> 1), MENU_Y + 8, PAL.hudText);
+        return;
+      }
+      const icon = ICONS[WEATHER_ICON[c]];
+      ctx.fillStyle = PAL.hudText;
+      for (let r = 0; r < icon.length; r++) {
+        for (let k = 0; k < icon[r].length; k++) if (icon[r][k] === '#') ctx.fillRect(bx + ((bw - 9) >> 1) + k, MENU_Y + 6 + r, 1, 1);
+      }
+    });
+    drawText(ctx, `POGODA: ${WEATHER_NAMES[s.weather]}`, PX + 5, MENU_Y + 21, PAL.locoMagentaHi);
+  }
+}
+
+/** Krótki napis z nazwą wybranej pogody (środek, pod podpowiedzią); alpha 0..1. */
+export function drawToast(ctx: CanvasRenderingContext2D, text: string, alpha: number): void {
+  if (alpha <= 0) return;
+  const w = textWidth(text) + 16;
+  const x = (W - w) >> 1;
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.fillStyle = PAL.hudBg;
+  ctx.fillRect(x, 28, w, 15);
+  ctx.fillStyle = PAL.jaxanGreen;
+  ctx.fillRect(x, 28, w, 1);
+  ctx.fillStyle = PAL.locoMagenta;
+  ctx.fillRect(x, 42, w, 1);
+  drawText(ctx, text, x + 8, 33, PAL.hudText);
+  ctx.globalAlpha = 1;
 }
 
 /** Dane panelu ograniczenia prędkości (prawy górny róg). */
@@ -227,7 +309,7 @@ export const HELP_LINES: [string, string][] = [
   ['A', 'JAZDA AUTO / RĘCZNA'],
   ['M', 'DŹWIĘK WŁ. / WYŁ.'],
   ['F', 'PEŁNY EKRAN'],
-  ['W', 'POGODA: AUTO, POGODNIE, POCHMURNO...'],
+  ['W', 'POGODA: AUTO, POGODNIE, POCHMURNO, DESZCZ, MGŁA, ŚNIEG'],
   ['C', 'TRYB KINOWY'],
   ['+ -', 'DODAJ / ODEJMIJ WAGON'],
   ['[ ]', 'POPRZEDNI / NASTĘPNY PUNKT TRASY'],
