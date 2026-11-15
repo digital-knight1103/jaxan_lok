@@ -12,10 +12,9 @@ export const WEATHER_FADE_S = 20;
 /** Czas trwania jednej pogody w automacie (s). */
 export const WEATHER_HOLD_MIN_S = 180;
 export const WEATHER_HOLD_MAX_S = 600;
-/** Szansa na śnieg zamiast deszczu po pochmurnej pogodzie. */
-const SNOW_CHANCE = 0.15;
-/** Szansa na mgłę zamiast pochmurnej pogody, gdy po pogodnym jest ranek. */
-const FOG_CHANCE = 0.4;
+/** Szanse automatu: śnieg zamiast deszczu po pochmurnej pogodzie; mgła zamiast pochmurnej, gdy po pogodnym jest ranek. Zależą od pory roku. */
+export interface Climate { snow: number; fog: number }
+const DEFAULT_CLIMATE: Climate = { snow: 0.15, fog: 0.4 };
 
 const TARGET: Record<WeatherKind, { cloud: number; rain: number; snow: number; fog: number }> = {
   clear: { cloud: 0, rain: 0, snow: 0, fog: 0 },
@@ -83,19 +82,19 @@ export class Weather {
   }
 
   /** Następna pogoda w automacie. */
-  private nextAuto(morning: boolean): WeatherKind {
+  private nextAuto(morning: boolean, climate: Climate): WeatherKind {
     switch (this.kind) {
-      case 'clear': return morning && this.rnd() < FOG_CHANCE ? 'fog' : 'cloudy';
-      case 'cloudy': return this.rnd() < SNOW_CHANCE ? 'snow' : 'rain';
+      case 'clear': return morning && this.rnd() < climate.fog ? 'fog' : 'cloudy';
+      case 'cloudy': return this.rnd() < climate.snow ? 'snow' : 'rain';
       default: return 'clear';
     }
   }
 
   /** morning: pora, w której automat może wywołać mgłę (rano). */
-  update(dt: number, morning = false): void {
+  update(dt: number, morning = false, climate: Climate = DEFAULT_CLIMATE): void {
     if (this.auto) {
       this.hold -= dt;
-      if (this.hold <= 0) this.set(this.nextAuto(morning));
+      if (this.hold <= 0) this.set(this.nextAuto(morning, climate));
     }
     const t = TARGET[this.kind];
     const step = dt / WEATHER_FADE_S;

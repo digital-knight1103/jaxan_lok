@@ -23,7 +23,7 @@ import { stepSpeed, adjustTarget, emergencyStep } from './train/physics';
 import { SignalSystem } from './train/signals';
 import { drawSignalPosts, drawSignalLights, signalColor } from './scene/signals';
 import { drawText, textWidth } from './engine/font';
-import { Hud, drawLimitPanel, drawHelp, drawHint, drawToast, WEATHER_NAMES } from './ui/hud';
+import { Hud, drawLimitPanel, drawHelp, drawHint, drawToast, WEATHER_NAMES, SEASON_NAMES } from './ui/hud';
 import { RouteMap } from './ui/routemap';
 import { RouteIndex, ANCHOR_SCREEN_X, KM_PX, stopWorldX, type Poi } from './scene/routeindex';
 import { TravelAnim, type TravelFrame } from './scene/travel';
@@ -31,6 +31,8 @@ import { REGISTRY, LANDMARK_ORDER } from './scene/segments/registry';
 import { DayCycle } from './scene/daycycle';
 import { Celestial } from './scene/celestial';
 import { Weather, type WeatherKind } from './scene/weather';
+import { SeasonClock, SEASONS, syncLook, look, type Season } from './scene/season';
+import { autumnLeaves, springPetals } from './scene/seasonfx';
 import { CinemaCam } from './scene/cinema';
 import { SpeedLimits, limitAt, capAt, nextChange, type Zone } from './train/limits';
 import { drawLimitSigns } from './scene/limitsigns';
@@ -56,6 +58,12 @@ let time = 0;
 const dayCycle = new DayCycle(params.has('t') ? Number(params.get('t')) : undefined);
 if (params.has('t')) dayCycle.auto = false;
 const celestial = new Celestial();
+// Pory roku: zmieniają się same co kilka pętli trasy; ?season=spring|summer|autumn|winter ustawia porę na starcie, P przełącza.
+const seasons = new SeasonClock();
+if (SEASONS.includes(params.get('season') as Season)) seasons.jump(params.get('season') as Season);
+syncLook(seasons);
+dayCycle.dayBias = seasons.dayBias;
+dayCycle.pale = seasons.weight('winter');
 // Pogoda zmienia się sama; ?w=cloudy|rain|snow ustawia ją na starcie (debug/zrzuty), W przełącza ręcznie.
 const weather = new Weather();
 if (params.has('w')) {
@@ -68,6 +76,8 @@ let cinemaWas = false;
 const cinemaCam = new CinemaCam();
 const rainFx = new RainFx();
 const snowFx = new SnowFx();
+const leafFx = autumnLeaves();
+const petalFx = springPetals();
 
 // Warstwy krajobrazu rysowane do osobnego płótna – nocą przyciemniane (source-atop)
 // bez ruszania nieba, które ma własne kolory nocne.
@@ -126,6 +136,8 @@ const hills = new ForestRidgeLayer(31, 0.4, {
   meadows: 0.55, mist: 0.7, tile: W * 2,
 });
 const fore = new ForegroundLayer(41);
+const skinned = [farthest, far, near, hills, fore]; // tła przebarwiane pod porę roku
+for (const l of skinned) l.skin(look.from, look.to, look.step);
 const world = new World();
 const consist = new Consist(state.wagons);
 const sparks = new Sparks();
@@ -204,6 +216,17 @@ try {
     localStorage.setItem('jaxan.hintSeen', '1');
   }
 } catch { /* localStorage niedostępny – podpowiedź pokaże się przy każdym starcie */ }
+
+function toastSeason(): void {
+  toastText = `PORA ROKU: ${SEASON_NAMES[seasons.choice]}`;
+  toastT = 2;
+}
+
+/** Przebarwianie teł pod porę roku, porcjami w wolnym budżecie klatki. */
+function stepSkins(): void {
+  const t0 = performance.now();
+  for (const l of skinned) while (l.skinStep()) if (performance.now() - t0 > 2) return;
+}
 
 function toast(): void {
   toastText = `POGODA: ${WEATHER_NAMES[weather.choice]}`;
@@ -286,6 +309,11 @@ function action(a: Action): void {
       break;
     case 'weather-menu':
       hud.menuOpen = !hud.menuOpen;
+      break;
+    case 'season':
+      hud.menuOpen = false;
+      seasons.cycle();
+      toastSeason();
       break;
     case 'poi-next':
     case 'poi-prev': {
@@ -420,7 +448,14 @@ function simulate(dt: number): void {
   consist.shift += (target - consist.shift) * Math.min(1, dt * 1.2);
   clouds.update(dt);
   // rano (wschód–przedpołudnie) automat może wywołać mgłę
-  weather.update(dt, dayCycle.t > 0.2 && dayCycle.t < 0.42);
+  // pory roku: przejścia kolorów, dłuższy/krótszy dzień, szanse pogody AUTO
+  seasons.update(dt, worldX);
+  if (syncLook(seasons)) for (const l of skinned) l.skin(look.from, look.to, look.step);
+  dayCycle.dayBias = seasons.dayBias;
+dayCycle.pale = seasons.weight('winter');
+  weather.update(dt, dayCycle.t > 0.2 && dayCycle.t < 0.42, seasons.climate);
+  leafFx.update(dt, seasons.weight('autumn'));
+  petalFx.update(dt, seasons.weight('spring') * 0.5);
   rainFx.update(dt, weather.rain, state.kmh);
   snowFx.update(dt, weather.snow);
   birds.update(dt, Math.floor(worldX), time);
@@ -495,6 +530,8 @@ startLoop(
     const env: SegmentEnv = { night, time, sunL: light.sunL, sunR: light.sunR }; // rim light wg słońca/księżyca
     const sway = Math.sin(time * 0.9) * 1.2; // kołysanie liny nośnej
     world.prepare(camX);
+    stepSkins();
+    const snowLvl = Math.max(weather.snow, seasons.weight('winter')); // zimą śnieg leży także bez opadów
 
     // 1. niebo, gwiazdy, słońce/księżyc
     {
@@ -530,10 +567,10 @@ startLoop(
     drawFogVeil(bctx, fogW, 0.45, TRACK_Y - 70, TRACK_Y + 10); // mgła przy ziemi: tło toru zlewa się z mgłą
     drawFogVeil(bctx, fogW, 0.3, TRACK_Y + 8, TRACK_Y + 9); // lekki welon także na polach przed torem
     drawFogWisps(bctx, fogW, worldX, time, 0, TRACK_Y - 40, TRACK_Y + 4, 0.35);
-    drawSnowCover(bctx, weather.snow); // biel na dachach, koronach i nasypie (pod torem)
+    drawSnowCover(bctx, snowLvl); // biel na dachach, koronach i nasypie (pod torem)
     drawSnowGround(bctx, weather.snow);
     drawTrack(bctx, camX);
-    drawTrackWeather(bctx, camX, weather.rain, weather.snow);
+    drawTrackWeather(bctx, camX, weather.rain, snowLvl);
     applyTint(bctx, night, dayCycle.warmth, 0.72, dayCycle.golden, gloom(weather.cloud, weather.rain));
     ctx.drawImage(backCanvas, 0, 0);
     world.drawLights(ctx, env);
@@ -543,12 +580,12 @@ startLoop(
     fctx.clearRect(0, 0, W, H);
     consist.draw(fctx, light.sunL, light.sunR);
     drawWires(fctx, camX, sway);
-    if (weather.snow > 0.01) {
+    if (snowLvl > 0.01) {
       // pierwszy plan osobno, żeby śnieg nie przykrył malowania taboru
       gctx.clearRect(0, 0, W, H);
       world.drawFront(gctx, env);
       fore.draw(gctx, worldX);
-      drawSnowCover(gctx, weather.snow);
+      drawSnowCover(gctx, snowLvl);
       fctx.drawImage(gCanvas, 0, 0);
     } else {
       world.drawFront(fctx, env);
@@ -565,6 +602,8 @@ startLoop(
     sparks.draw(ctx);
     rainFx.draw(ctx, weather.rain, night); // opady na wierzchu
     snowFx.draw(ctx, weather.snow, worldX, time, night);
+    leafFx.draw(ctx, seasons.weight('autumn'), worldX, time, night);
+    petalFx.draw(ctx, seasons.weight('spring') * 0.5, worldX, time, night);
 
     // 5. szybki przejazd: rozmycie ruchu (smugi) i ściemnienie
     if (travelFx && travelFx.blur > 0) {
@@ -592,7 +631,7 @@ startLoop(
     hud.draw(ctx, {
       kmh: state.kmh, targetKmh: state.targetKmh, running: state.running,
       night: night > 0.5, muted: state.muted, horn: state.horn, hornHi: state.hornHi,
-      auto: state.autoDrive, weather: weather.choice, signal: signalPreview(),
+      auto: state.autoDrive, weather: weather.choice, season: seasons.choice, signal: signalPreview(),
     });
     drawAlert();
     drawToast(ctx, toastText, toastT);

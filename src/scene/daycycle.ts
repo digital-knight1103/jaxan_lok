@@ -13,6 +13,10 @@ const SUN_HORIZON = 200;
 
 export class DayCycle {
   auto = true;
+  /** Przesunięcie progu nocy od pory roku: zimą dzień krótszy (dodatnie), latem dłuższy. */
+  dayBias = 0;
+  /** 0..1: zimowe, wyblakłe niebo (ustawiane z pory roku). */
+  pale = 0;
   private trans: { from: number; to: number; elapsed: number } | null = null;
 
   constructor(public t = 0.42) {}
@@ -24,7 +28,7 @@ export class DayCycle {
 
   /** 0 = dzień, 1 = pełna noc. */
   get night(): number {
-    return clamp01((0.05 - this.elevation) / 0.5);
+    return clamp01((0.05 + this.dayBias - this.elevation) / 0.5);
   }
 
   /** Ciepło świtu/zmierzchu 0..1. */
@@ -102,10 +106,11 @@ export class DayCycle {
       mid: lerpColor(lerpColor(PAL.skyMid, PAL.skyGoldMid, g), PAL.skyNightMid, n),
       horizon: lerpColor(lerpColor(PAL.skyHorizon, PAL.skyGoldHorizon, g), PAL.skyNightHorizon, n),
     };
+    const p = this.pale * 0.4 * (1 - n); // zimą niebo bledsze i szarawe
     return {
-      top: lerpColor(base.top, PAL.skyWarmTop, w * 0.5),
-      mid: lerpColor(base.mid, PAL.skyWarmMid, w * 0.8),
-      horizon: lerpColor(base.horizon, PAL.skyWarmHorizon, w * 0.9),
+      top: lerpColor(lerpColor(base.top, PAL.skyWarmTop, w * 0.5), PAL.skyOvercast, p),
+      mid: lerpColor(lerpColor(base.mid, PAL.skyWarmMid, w * 0.8), PAL.skyOvercast, p),
+      horizon: lerpColor(lerpColor(base.horizon, PAL.skyWarmHorizon, w * 0.9), PAL.skyOvercast, p),
     };
   }
 

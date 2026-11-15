@@ -5,6 +5,7 @@ import { PAL } from '../palette';
 import { drawText, textWidth } from '../engine/font';
 import type { Action } from '../engine/input';
 import type { WeatherChoice } from '../scene/weather';
+import type { SeasonChoice } from '../scene/season';
 
 type Icon = string[];
 
@@ -25,6 +26,7 @@ const ICONS: Record<string, Icon> = {
   rain: ['..###....', '.#####.#.', '#########', '#########', '.#######.', '.#..#..#.', '..#..#...', '.#..#..#.', '.........'],
   fog: ['.........', '.#######.', '.........', '#######..', '.........', '..#######', '.........', '.#######.', '.........'],
   snow: ['....#....', '.#..#..#.', '..#.#.#..', '...###...', '#########', '...###...', '..#.#.#..', '.#..#..#.', '....#....'],
+  leaf: ['.......##', '.....####', '...######', '..#######', '.########', '.#######.', '#.#####..', '..#.##...', '...#.....'],
   full: ['###...###', '#.......#', '#.......#', '.........', '.........', '.........', '#.......#', '#.......#', '###...###'],
 };
 
@@ -40,9 +42,15 @@ export interface HudState {
   auto: boolean;
   /** Wybór pogody: AUTO albo konkretna. */
   weather: WeatherChoice;
+  /** Wybór pory roku: AUTO albo konkretna. */
+  season: SeasonChoice;
   /** Najbliższy sygnał przed pociągiem (podgląd). */
   signal: { label: string; km: number; color: string } | null;
 }
+
+export const SEASON_NAMES: Record<SeasonChoice, string> = {
+  auto: 'AUTO', spring: 'WIOSNA', summer: 'LATO', autumn: 'JESIEŃ', winter: 'ZIMA',
+};
 
 export const WEATHER_NAMES: Record<WeatherChoice, string> = {
   auto: 'AUTO', clear: 'POGODNIE', cloudy: 'POCHMURNO', rain: 'DESZCZ', fog: 'MGŁA', snow: 'ŚNIEG',
@@ -67,6 +75,7 @@ const BUTTONS: Button[] = [
   { action: 'toggle-mute', key: 'M', icon: (s) => (s.muted ? 'muted' : 'sound'), active: (s) => !s.muted },
   { action: 'fullscreen', key: 'F', icon: () => 'full', active: () => false },
   { action: 'weather-menu', key: 'W', icon: (s) => WEATHER_ICON[s.weather], active: (_s) => weatherMenuOpen },
+  { action: 'season', key: 'P', icon: () => 'leaf', active: (s) => s.season !== 'auto' },
   { action: 'cinema', key: 'C', icon: () => 'cinema', active: () => false },
   { action: 'help', key: '?', icon: () => 'help', active: () => false },
 ];
@@ -314,6 +323,7 @@ export const HELP_LINES: [string, string][] = [
   ['M', 'DŹWIĘK WŁ. / WYŁ.'],
   ['F', 'PEŁNY EKRAN'],
   ['W', 'POGODA: AUTO, POGODNIE, POCHMURNO, DESZCZ, MGŁA, ŚNIEG'],
+  ['P', 'PORA ROKU: AUTO, WIOSNA, LATO, JESIEŃ, ZIMA'],
   ['C', 'TRYB KINOWY'],
   ['[ ]', 'POPRZEDNI / NASTĘPNY PUNKT TRASY'],
   ['?', 'TA POMOC'],

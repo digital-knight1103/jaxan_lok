@@ -5,6 +5,8 @@ import { makeSprite } from '../engine/sprite';
 import { Route } from './route';
 import { REGISTRY, LANDMARK_ORDER } from './segments/registry';
 import type { Placed, SegmentEnv } from './segments/types';
+import { look } from './season';
+import { colorFn, recolorJob } from '../engine/seasonskin';
 import { rimOverlaysJob, drawRim, type RimOverlays } from '../engine/light';
 
 interface Rendered {
@@ -15,6 +17,10 @@ interface Rendered {
   ready: boolean;
   /** Zadanie przyrostowe: render warstw, potem nakładki; undefined = wszystko gotowe. */
   job?: Generator<void, void>;
+  /** Numer wyglądu (pora roku), w którym segment namalowano; inny niż look.epoch = do przemalowania. */
+  epoch: number;
+  /** Przemalowana kopia w trakcie budowy – podmienia segment, gdy gotowa (bez migotania). */
+  next?: Rendered;
 }
 interface Item { p: Placed; x: number; r: Rendered }
 
@@ -46,11 +52,14 @@ export class World {
     const back = makeSprite(w, H, (c) => (backCtx = c));
     const bed = makeSprite(w, H, (c) => (bedCtx = c));
     const front = makeSprite(w, H, (c) => (frontCtx = c));
-    const r: Rendered = { back, bed, front, ready: false };
+    const r: Rendered = { back, bed, front, ready: false, epoch: look.epoch };
     const def = p.def;
     r.job = (function* () {
       const g = def.render({ back: backCtx, bed: bedCtx, front: frontCtx }, p.seed);
       if (g) yield* g;
+      // pora roku: przebarwienie zieleni (malowanie taboru i reszta kolorów bez zmian)
+      const fn = colorFn(look.from, look.to, look.step);
+      for (const c of [backCtx, bedCtx, frontCtx]) yield* recolorJob(c, fn);
       r.ready = true;
       yield;
       r.backRim = yield* rimOverlaysJob(back);
@@ -83,6 +92,7 @@ export class World {
       keep.add(p.index);
       let r = this.cache.get(p.index);
       if (!r) this.cache.set(p.index, (r = this.start(p)));
+      else if ((r.next ? r.next.epoch : r.epoch) !== look.epoch) r.next = this.start(p);
       const onScreen = p.startX < camX + W;
       // segment już na ekranie (np. po skoku z mapy) – render dokańczamy od razu
       if (onScreen) while (!r.ready && this.step(r));
@@ -93,8 +103,13 @@ export class World {
     // co najmniej jeden krok na klatkę – praca zawsze posuwa się do przodu
     const t0 = performance.now();
     const spent = () => performance.now() - t0 > PREP_BUDGET_MS;
-    for (const r of this.cache.values()) {
+    for (const [k, r] of this.cache) {
       while (this.step(r)) if (spent()) return;
+      const n = r.next;
+      if (n) {
+        while (this.step(n)) if (spent()) return;
+        this.cache.set(k, n); // gotowa przemalowana kopia zastępuje starą
+      }
     }
     while (this.warm && !spent()) if (this.warm.next().done) this.warm = undefined;
   }

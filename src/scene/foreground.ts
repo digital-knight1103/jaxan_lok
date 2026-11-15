@@ -4,17 +4,20 @@ import { W, H } from '../config';
 import { PAL } from '../palette';
 import { makeSprite } from '../engine/sprite';
 import { mulberry32 } from '../engine/rng';
+import { SkinnedTile } from '../engine/seasonskin';
+import type { Season } from './season';
 import { drawFoliage } from '../sprites/blob';
 
 const TILE = W * 3;
 const RAMP = [PAL.grassGlint, PAL.grassHi, PAL.grass, PAL.grassMid, PAL.grassDark, PAL.grassDeep, PAL.frontDeep] as const;
 
 export class ForegroundLayer {
-  private tile: HTMLCanvasElement;
+  private skinned: SkinnedTile;
+  private get tile(): HTMLCanvasElement { return this.skinned.shown; }
 
   constructor(seed: number, private factor = 1.3) {
     const rnd = mulberry32(seed);
-    this.tile = makeSprite(TILE, H, (ctx) => {
+    this.skinned = new SkinnedTile(makeSprite(TILE, H, (ctx) => {
       // kępy z przerwami – nie zasłaniają doliny pod mostem w całości
       let x = 40;
       while (x < TILE - 80) {
@@ -39,7 +42,15 @@ export class ForegroundLayer {
         }
         x += w + 70 + Math.floor(rnd() * 170);
       }
-    });
+    }));
+  }
+
+  skin(from: Season, to: Season, step: number): void {
+    this.skinned.request(from, to, step);
+  }
+
+  skinStep(): boolean {
+    return this.skinned.step();
   }
 
   draw(ctx: CanvasRenderingContext2D, worldX: number): void {

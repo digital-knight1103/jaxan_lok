@@ -392,3 +392,12 @@ rezygnacja. Każdy punkt osobnym commitem.
   (skala ułamkowa tylko w tym trybie), pan wzdłuż składu; dowolny klawisz/ruch myszy = powrót.
   Zrzut: `screenshots/c1-kinowy.png`.
 - Uwaga: Ie-1 nie definiuje osobnego wskaźnika końca ograniczenia – koniec to odwrotna strona W 9.
+
+---
+
+## Etap 3 – rozszerzenia sceny tła (16.11)
+
+- [x] **A – pory roku** (`scene/season.ts` + testy, `engine/seasonskin.ts`, `scene/seasonfx.ts`): 4 pory zmieniają się co ~2 pętle trasy (przejście 30 s), `P` ręcznie z AUTO, `?season=`.
+  Scena rysowana jak latem, warstwy i tła przebarwiane transformacją HSL (zieleń → złoto/rudź, świeża zieleń, śnieg); tabor nietknięty.
+  Drzewa: jesienne rampy, nagie zimą, kwitnące wiosną; ośnieżone świerki; pola wg pory; bociany tylko wiosną/latem; liście i płatki; zamarznięte kałuże;
+  krótszy dzień i bledsze niebo zimą; pogoda AUTO zależna od pory. Zrzuty `screenshots/p1..p4`.

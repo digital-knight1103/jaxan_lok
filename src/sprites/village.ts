@@ -1,3 +1,4 @@
+import { look } from '../scene/season';
 // Polska wieś (styl2): drewniana stodoła, wiatrak koźlak, gniazdo bociana na słupie,
 // kapliczka, domy z czerwoną dachówką, płoty sztachetowe, topole i wierzby głowiaste.
 // Światło z lewej-góry: jasna krawędź od słońca, chłodny cień po prawej i pod okapem.
@@ -208,7 +209,9 @@ export function getWindmill(): HTMLCanvasElement {
 
 /** Słup z gniazdem bociana i bocianem. */
 export function getStorkNest(): HTMLCanvasElement {
-  return cached('stork', () => {
+  // bociany odlatują na zimę: jesienią i zimą gniazdo stoi puste
+  const bird = look.season === 'spring' || look.season === 'summer';
+  return cached(bird ? 'stork' : 'stork-empty', () => {
     const w = 22;
     const h = 64;
     return makeSprite(w, h, (ctx) => {
@@ -227,6 +230,7 @@ export function getStorkNest(): HTMLCanvasElement {
         }
       }
       for (let i = 0; i < 6; i++) px(ctx, cx - 9 + Math.floor(rnd() * 18), 10 + Math.floor(rnd() * 4), PAL.nestHi); // wystające patyki
+      if (!bird) return;
       // bocian: biały tułów, czarne lotki, długa szyja, czerwony dziób
       rect(ctx, cx - 3, 5, 6, 4, PAL.stork);
       rect(ctx, cx + 1, 6, 3, 3, PAL.storkBlack);

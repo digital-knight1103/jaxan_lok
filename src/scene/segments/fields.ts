@@ -9,6 +9,7 @@ import { cached, makeSprite, rect } from '../../engine/sprite';
 import type { SegmentDef } from './types';
 import { GROUND_Y, drawBackStrip, drawGround, plantBackItem } from './common';
 import { bayer, paint } from '../../engine/pixbuf';
+import { look, type Season } from '../season';
 import { drawFoliage } from '../../sprites/blob';
 import { getPoplar, getWillow, getShrine, POPLAR_VARIANTS, WILLOW_VARIANTS } from '../../sprites/village';
 
@@ -23,8 +24,11 @@ const SLANT = 0.3;
 const edgeL = (y: number) => EDGE + Math.round(Math.max(0, y - GROUND_Y) * SLANT);
 const edgeR = (y: number) => WIDTH - edgeL(y);
 
-type Crop = 'wheat' | 'rapeseed' | 'green' | 'stubble';
+type Crop = 'wheat' | 'rapeseed' | 'green' | 'stubble' | 'young' | 'soil' | 'snow';
 const CROP: Record<Crop, [string, string, string]> = {
+  young: [PAL.youngGrainHi, PAL.youngGrain, PAL.youngGrainShade],
+  soil: [PAL.soilHi, PAL.soil, PAL.soilDark],
+  snow: [PAL.snowLit, PAL.snowMid, PAL.snowShade],
   wheat: [PAL.wheatHi, PAL.wheat, PAL.wheatShade],
   rapeseed: [PAL.rapeseed, PAL.rapeseed, PAL.rapeseedShade],
   green: [PAL.fieldGreen, PAL.fieldGreen, PAL.fieldGreenShade],
@@ -33,15 +37,23 @@ const CROP: Record<Crop, [string, string, string]> = {
 
 interface Plot { x0: number; x1: number; crop: Crop }
 interface Stripe { y0: number; y1: number; plots: Plot[] }
+/** Uprawy na polach średniego planu wg pory roku. */
+const CROPS: Record<Season, Crop[]> = {
+  spring: ['young', 'rapeseed', 'young', 'soil', 'green', 'rapeseed'],
+  summer: ['wheat', 'rapeseed', 'green', 'stubble', 'wheat', 'wheat'],
+  autumn: ['soil', 'soil', 'stubble', 'green', 'soil', 'stubble'],
+  winter: ['snow', 'snow', 'snow', 'snow', 'snow', 'snow'],
+};
+
 interface Layout { stripes: Stripe[]; combine: { stripe: number; speed: number; phase: number } | null }
 
 /** Układ pól średniego planu – deterministyczny z seeda (render i animate liczą to samo). */
-function layout(seed: number): Layout {
+function layout(seed: number, season: Season): Layout {
   const rnd = mulberry32(seed ^ 0x51e1d);
   const heights = [3, 4, 5, 7, 9]; // dalej = cieńsze (perspektywa)
   const stripes: Stripe[] = [];
   let y = MID_TOP;
-  const crops: Crop[] = ['wheat', 'rapeseed', 'green', 'stubble', 'wheat', 'wheat'];
+  const crops = CROPS[season];
   for (const h of heights) {
     const plots: Plot[] = [];
     let x = 0;
@@ -54,7 +66,7 @@ function layout(seed: number): Layout {
     y += h;
   }
   let combine: Layout['combine'] = null;
-  if (rnd() < 0.45) {
+  if (season === 'summer' && rnd() < 0.45) {
     // kombajn kosi pas zboża przedostatni od dołu
     const s = stripes[3];
     s.plots = [{ x0: 0, x1: WIDTH, crop: 'wheat' }];
@@ -63,16 +75,20 @@ function layout(seed: number): Layout {
   return { stripes, combine };
 }
 
-const layoutCache = new Map<number, Layout>();
-function getLayout(seed: number): Layout {
-  let l = layoutCache.get(seed);
+const layoutCache = new Map<string, Layout>();
+/** Pora, w której segment (ziarno) był ostatnio malowany – animacje czytają ją stąd. */
+const paintedSeason = new Map<number, Season>();
+function getLayout(seed: number, season: Season): Layout {
+  const key = `${seed}:${season}`;
+  let l = layoutCache.get(key);
   if (!l) {
-    if (layoutCache.size > 32) layoutCache.clear(); // pamięć stała
-    l = layout(seed);
-    layoutCache.set(seed, l);
+    if (layoutCache.size > 48) layoutCache.clear(); // pamięć stała
+    l = layout(seed, season);
+    layoutCache.set(key, l);
   }
   return l;
 }
+const seasonOf = (seed: number): Season => paintedSeason.get(seed) ?? 'summer';
 
 function drawMidFields(ctx: CanvasRenderingContext2D, l: Layout, rnd: () => number): void {
   for (const s of l.stripes) {
@@ -128,8 +144,11 @@ const CHUNK = 8;
 const FRAMES = 4;
 
 /** Kafle zboża: [pas][klatka wychylenia] – rysowane raz. */
-function wheatTiles(): HTMLCanvasElement[][] {
-  return cached('wheat-tiles', () =>
+function wheatTiles(young: boolean): HTMLCanvasElement[][] {
+  const P = young
+    ? { ear: PAL.youngGrainHi, hi: PAL.youngGrainHi, mid: PAL.youngGrain, shade: PAL.youngGrainShade, dark: PAL.fieldGreenShade }
+    : { ear: PAL.wheatEar, hi: PAL.wheatHi, mid: PAL.wheat, shade: PAL.wheatShade, dark: PAL.wheatDark };
+  return cached(young ? 'young-tiles' : 'wheat-tiles', () =>
     BANDS.map((b, bi) => {
       const th = b.y1 - b.y0 + b.stalk;
       return Array.from({ length: FRAMES }, (_, f) =>
@@ -145,9 +164,9 @@ function wheatTiles(): HTMLCanvasElement[][] {
               for (let j = 0; j < h; j++) {
                 const u = j / h; // 0 = nasada, 1 = czubek
                 const px = (x + Math.round(lean * u * u) + TILE) % TILE;
-                const c = u > 0.72 ? (tone < 0.35 ? PAL.wheatEar : PAL.wheatHi)
-                  : u > 0.4 ? (tone < 0.5 ? PAL.wheat : PAL.wheatHi)
-                  : tone < 0.5 ? PAL.wheatShade : PAL.wheatDark;
+                const c = u > 0.72 ? (tone < 0.35 ? P.ear : P.hi)
+                  : u > 0.4 ? (tone < 0.5 ? P.mid : P.hi)
+                  : tone < 0.5 ? P.shade : P.dark;
                 ctx.fillStyle = c;
                 ctx.fillRect(px, yb - j, 1, 1);
                 // kłos na bliższych pasach – 2 px szerokości
@@ -169,7 +188,10 @@ export const fields: SegmentDef = {
   // generator: yield = miejsce na przerwę między klatkami (World rozkłada render w czasie)
   *render({ back, bed }, seed) {
     const rnd = mulberry32(seed);
-    const l = getLayout(seed);
+    const season = look.season;
+    paintedSeason.set(seed, season);
+    if (paintedSeason.size > 64) paintedSeason.clear();
+    const l = getLayout(seed, season);
     drawMidFields(back, l, rnd);
     yield;
     // pojedyncze drzewa na miedzach + zadrzewione miedze na brzegach
@@ -200,7 +222,12 @@ export const fields: SegmentDef = {
     // pierwszy plan: miedza z trawą, pod spodem złote podłoże łanu (luki między źdźbłami)
     drawGround(bed, 0, WIDTH, rnd);
     yield;
-    const ramp = [PAL.wheatHi, PAL.wheat, PAL.wheatShade, PAL.wheatDark, PAL.wheatDeep];
+    const ramp = {
+      summer: [PAL.wheatHi, PAL.wheat, PAL.wheatShade, PAL.wheatDark, PAL.wheatDeep],
+      spring: [PAL.youngGrainHi, PAL.youngGrain, PAL.youngGrainShade, PAL.fieldGreenShade, PAL.grassDark],
+      autumn: [PAL.soilHi, PAL.soil, PAL.soilDark, PAL.soilDeep, PAL.soilDeep],
+      winter: [PAL.snowLit, PAL.snowMid, PAL.snowShade, PAL.snowDeep, PAL.snowDeep],
+    }[season];
     for (let y = GROUND_Y + 2; y < H; y++) {
       const ri = Math.min(ramp.length - 1, Math.floor(((y - GROUND_Y) / (H - GROUND_Y)) * ramp.length));
       const ragL = edgeL(y) + Math.floor(rnd() * 3);
@@ -213,9 +240,10 @@ export const fields: SegmentDef = {
 
   animate(ctx, x, env, seed) {
     // kombajn w pracy: jedzie wzdłuż pasa zboża, za nim kurz i ściernisko
-    const c = getLayout(seed).combine;
+    const lay = getLayout(seed, seasonOf(seed));
+    const c = lay.combine;
     if (!c) return;
-    const s = getLayout(seed).stripes[c.stripe];
+    const s = lay.stripes[c.stripe];
     const span = WIDTH - 60;
     const cx = Math.round(x + 30 + ((c.phase + env.time * c.speed) % span));
     if (cx < -30 || cx > W + 30) return;
@@ -242,12 +270,15 @@ export const fields: SegmentDef = {
     ctx.globalAlpha = 1;
   },
 
-  animateBed(ctx, x, env) {
+  animateBed(ctx, x, env, seed) {
+    // falują tylko zboża (lato) i młode zboże (wiosna); jesienią i zimą goła ziemia/śnieg
+    const ss = seasonOf(seed);
+    if (ss === 'autumn' || ss === 'winter') return;
     // falujące zboże: kafle wybierane per kolumna według fali wiatru
     const x0 = Math.max(x + EDGE, 0);
     const x1 = Math.min(x + WIDTH - EDGE, W);
     if (x1 <= x0) return;
-    const tiles = wheatTiles();
+    const tiles = wheatTiles(ss === 'spring');
     const t = env.time;
     // przycięcie do trapezu łanu (skośne miedze po bokach)
     const top = GROUND_Y - 20;

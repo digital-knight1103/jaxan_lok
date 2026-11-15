@@ -45,6 +45,7 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
 | Skok do poprzedniego / następnego punktu trasy | `[` / `]` | klik w ikonę na mapie trasy |
 | Przewijanie podglądu mapy | – | przeciągnij pasek mapy myszą lub palcem |
 | Pogoda: AUTO → pogodnie → pochmurno → deszcz → mgła → śnieg → AUTO (napis z nazwą na ekranie) | `W` | przycisk pogody rozwija menu z ikonami |
+| Pora roku: AUTO → wiosna → lato → jesień → zima → AUTO (napis na ekranie; `?season=spring|summer|autumn|winter`) | `P` | przycisk z liściem |
 | Tryb kinowy (bez HUD i mapy, kamera) | `C` | przycisk 🎬 `C`; dowolny klawisz / ruch myszy = powrót |
 | Lista skrótów (nakładka) | `?` | przycisk `?`; zamyka dowolny klawisz lub kliknięcie |
 

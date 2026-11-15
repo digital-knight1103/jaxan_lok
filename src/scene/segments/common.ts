@@ -2,6 +2,8 @@
 import { H, TRACK_Y } from '../../config';
 import { PAL } from '../../palette';
 import { rgba } from '../../engine/pixbuf';
+import { mulberry32 } from '../../engine/rng';
+import { look } from '../season';
 import { getBush, getPine, getTree, BUSH_VARIANTS, PINE_VARIANTS, TREE_VARIANTS } from '../../sprites/nature';
 
 /** Pierwszy wiersz gruntu pod tłuczniem. */
@@ -81,6 +83,26 @@ export function drawGround(
     if (top < H && rnd() < 0.55) set(x, top, rnd() < 0.3 ? RC[0] : RC[1]);
   }
   ctx.putImageData(img, bx0, by0);
+  if (look.season === 'winter') drawIcePuddles(ctx, x0, x1, topAt);
+}
+
+/** Zima: zamarznięte kałuże na stoku – lodowe elipsy z jasnym refleksem (osobne losowanie, nie zmienia układu reszty). */
+function drawIcePuddles(ctx: CanvasRenderingContext2D, x0: number, x1: number, topAt: (x: number) => number): void {
+  const r = mulberry32((x0 * 31 + x1 * 17 + 5) | 0);
+  for (let i = 0; i < Math.max(1, Math.floor((x1 - x0) / 150)); i++) {
+    const cx = x0 + 20 + Math.floor(r() * Math.max(1, x1 - x0 - 40));
+    if (topAt(cx) > GROUND_Y + 2) continue; // nie na przyczółku mostu
+    const cy = GROUND_Y + 22 + Math.floor(r() * (H - GROUND_Y - 40));
+    const rx = 8 + Math.floor(r() * 12) + (cy - GROUND_Y) / 14;
+    const ry = Math.max(2, Math.round(rx * 0.22));
+    for (let dy = -ry; dy <= ry; dy++) {
+      const half = Math.round(rx * Math.sqrt(1 - (dy * dy) / (ry * ry + 0.5)));
+      ctx.fillStyle = dy < 0 ? PAL.iceHi : PAL.iceBlue;
+      ctx.fillRect(cx - half, cy + dy, half * 2 + 1, 1);
+    }
+    ctx.fillStyle = PAL.snowLit;
+    ctx.fillRect(cx - Math.round(rx * 0.5), cy - ry, Math.round(rx * 0.6), 1);
+  }
 }
 
 /** Krzaki rozsiane po stoku. */

@@ -7,6 +7,8 @@ import { W, H } from '../config';
 import { PAL } from '../palette';
 import { mulberry32 } from '../engine/rng';
 import { lerpColor } from '../engine/color';
+import { SkinnedTile } from '../engine/seasonskin';
+import type { Season } from './season';
 import { PixBuf, rgba, ditherIndex, ditherEdge, bayer } from '../engine/pixbuf';
 
 export interface RidgeStyle {
@@ -74,14 +76,14 @@ const MEADOW = [PAL.meadowShade, PAL.meadowMid, PAL.meadowBase, PAL.meadowLight,
 
 export class ForestRidgeLayer {
   /** Kafle: słońce z lewej i z prawej – przenikane wg kierunku światła (etap C). */
-  private tileL: HTMLCanvasElement;
-  private tileR: HTMLCanvasElement;
+  private tileL: SkinnedTile;
+  private tileR: SkinnedTile;
   private tileW: number;
 
   constructor(seed: number, private factor: number, s: RidgeStyle) {
     this.tileW = s.tile;
-    this.tileL = ForestRidgeLayer.build(seed, s, 1);
-    this.tileR = ForestRidgeLayer.build(seed, s, -1);
+    this.tileL = new SkinnedTile(ForestRidgeLayer.build(seed, s, 1));
+    this.tileR = new SkinnedTile(ForestRidgeLayer.build(seed, s, -1));
   }
 
   /** dir: 1 = słońce z lewej, -1 = z prawej (ten sam las, inne światło). */
@@ -163,11 +165,23 @@ export class ForestRidgeLayer {
     return buf.toCanvas();
   }
 
+  /** Pora roku: przebarwienie kafli w tle (porcjami, patrz skinStep). */
+  skin(from: Season, to: Season, step: number): void {
+    this.tileL.request(from, to, step);
+    this.tileR.request(from, to, step);
+  }
+
+  /** Jeden krok przebarwiania; false = nic do roboty. */
+  skinStep(): boolean {
+    return this.tileL.step() || this.tileR.step();
+  }
+
   /** right: udział światła z prawej 0..1 (0 = rano, 1 = wieczór). */
   draw(ctx: CanvasRenderingContext2D, worldX: number, right = 0): void {
     const TW = this.tileW;
     const off = Math.floor((worldX * this.factor) % TW);
-    const blit = (t: HTMLCanvasElement) => {
+    const blit = (st: SkinnedTile) => {
+      const t = st.shown;
       ctx.drawImage(t, -off, 0);
       if (TW - off < W) ctx.drawImage(t, TW - off, 0);
     };
