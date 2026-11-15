@@ -7,6 +7,7 @@ import { drawText, textWidth } from '../engine/font';
 import { KM_PX, MAP_RANGE_KM, type Poi, type RouteIndex } from '../scene/routeindex';
 import type { MapIcon } from '../scene/segments/types';
 import { SEM_BEFORE_STATION_PX } from '../train/signals';
+import type { Zone } from '../train/limits';
 
 /** Kolor znacznika sygnału na mapie (id stacji, rodzaj sygnału). */
 export type SignalColorFn = (stationIndex: number, kind: 'warn' | 'sem') => string;
@@ -114,7 +115,10 @@ export class RouteMap {
     return this.poiAt(x, this.center(trainX));
   }
 
-  draw(ctx: CanvasRenderingContext2D, trainX: number, alpha: number, sigColor?: SignalColorFn): void {
+  draw(
+    ctx: CanvasRenderingContext2D, trainX: number, alpha: number, sigColor?: SignalColorFn,
+    zonesFn?: (x0: number, x1: number) => Zone[],
+  ): void {
     if (alpha <= 0) return;
     const center = this.center(trainX);
     ctx.globalAlpha = alpha;
@@ -144,6 +148,17 @@ export class RouteMap {
       const mx = this.toMapX(km * KM_PX, center);
       ctx.fillStyle = km % 5 === 0 ? PAL.hudText : PAL.hudDim;
       ctx.fillRect(mx, lineY + 1, 1, km % 5 === 0 ? 2 : 1);
+    }
+
+    // ograniczenia prędkości: cienki pasek pod torem (100 jasny, 80 pomarańczowy, 60 czerwony)
+    if (zonesFn) {
+      for (const z of zonesFn(center - MAP_RANGE_KM * KM_PX, center + MAP_RANGE_KM * KM_PX)) {
+        const a = Math.max(BAR.x, this.toMapX(z.startX, center));
+        const b = Math.min(BAR.x + BAR.w, this.toMapX(z.endX, center));
+        if (b <= a) continue;
+        ctx.fillStyle = z.kmh >= 100 ? PAL.hudText : z.kmh >= 80 ? PAL.sigOrange : PAL.sigRed;
+        ctx.fillRect(a, lineY + 4, Math.max(1, b - a), 1);
+      }
     }
 
     // semafory: drobne znaczniki nad torem (tarcza 1 km przed semaforem), kolor = sygnał

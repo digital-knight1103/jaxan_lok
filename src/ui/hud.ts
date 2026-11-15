@@ -1,6 +1,6 @@
 // HUD: minimalistyczny panel w barwach JAXAN (czerń + magenta + zieleń),
 // rysowany w buforze 640×360 pikselową czcionką. Chowa się po bezczynności.
-import { MAX_KMH, SPEED_STEP_KMH } from '../config';
+import { MAX_KMH, SPEED_STEP_KMH, W } from '../config';
 import { PAL } from '../palette';
 import { drawText, textWidth } from '../engine/font';
 import type { Action } from '../engine/input';
@@ -169,4 +169,47 @@ export class Hud {
     });
     ctx.globalAlpha = 1;
   }
+}
+
+/** Dane panelu ograniczenia prędkości (prawy górny róg). */
+export interface LimitHud {
+  /** Obowiązująca prędkość (km/h). */
+  limit: number;
+  /** Najbliższa zmiana: nowa prędkość i odległość w km; null = brak. */
+  next: { kmh: number; km: number } | null;
+  kmh: number;
+  /** Przekroczenie (tylko jazda ręczna) – panel miga na pomarańczowo. */
+  over: boolean;
+}
+
+const LP = { w: 152, h: 50 };
+
+/** Panel „obowiązuje: N" – duża liczba, pod nią następna zmiana, obok aktualna prędkość. */
+export function drawLimitPanel(ctx: CanvasRenderingContext2D, s: LimitHud, time: number, alpha: number): void {
+  if (alpha <= 0) return;
+  const x = W - 6 - LP.w;
+  const y = 6;
+  const blink = s.over && time % 0.5 < 0.25;
+  const col = s.over ? (blink ? PAL.hudBg : PAL.sigOrange) : PAL.jaxanGreen;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = PAL.hudBg;
+  ctx.fillRect(x, y, LP.w, LP.h);
+  ctx.fillStyle = s.over ? PAL.sigOrange : PAL.locoMagenta;
+  ctx.fillRect(x, y, LP.w, 1);
+  ctx.fillRect(x, y + LP.h - 1, LP.w, 1);
+  ctx.fillRect(x, y, 1, LP.h);
+  ctx.fillRect(x + LP.w - 1, y, 1, LP.h);
+  drawText(ctx, 'OBOWIĄZUJE', x + 6, y + 5, PAL.hudDim);
+  drawText(ctx, String(s.limit), x + 6, y + 14, s.over ? PAL.sigOrange : PAL.jaxanGreen, 4);
+  // aktualna prędkość – po prawej, kolor jak ograniczenie (zielony / pomarańczowy)
+  const v = String(Math.round(s.kmh));
+  const vx = x + LP.w - 6;
+  drawText(ctx, 'PRĘDKOŚĆ', vx - textWidth('PRĘDKOŚĆ'), y + 5, PAL.hudDim);
+  drawText(ctx, v, vx - textWidth(v, 3), y + 14, col, 3);
+  drawText(ctx, 'KM/H', vx - textWidth('KM/H'), y + 31, PAL.hudDim);
+  ctx.fillStyle = PAL.hudButton;
+  ctx.fillRect(x + 4, y + 38, LP.w - 8, 1);
+  const nt = s.next ? `NASTĘPNE: ${s.next.kmh} ZA ${s.next.km.toFixed(1).replace('.', ',')} KM` : 'NASTĘPNE: BRAK ZMIAN';
+  drawText(ctx, nt, x + 6, y + 41, s.next ? PAL.hudText : PAL.hudDim);
+  ctx.globalAlpha = 1;
 }

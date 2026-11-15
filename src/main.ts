@@ -1,6 +1,6 @@
 // JAXAN Express – start i sklejenie modułów: stan, wejście, pętla, rysowanie warstw.
 import {
-  START_KMH, PX_PER_KMH, TRACK_Y, TRAIN_X, W, H, ROUTE_SEED, CURSOR_HIDE_MS, HUD_HIDE_MS, AUTO_RESUME_MS,
+  START_KMH, MAX_KMH, PX_PER_KMH, TRACK_Y, TRAIN_X, W, H, ROUTE_SEED, CURSOR_HIDE_MS, HUD_HIDE_MS, AUTO_RESUME_MS,
 } from './config';
 import { PAL } from './palette';
 import { initialState } from './state';
@@ -23,7 +23,7 @@ import { stepSpeed, adjustTarget, emergencyStep } from './train/physics';
 import { SignalSystem } from './train/signals';
 import { drawSignalPosts, drawSignalLights, signalColor } from './scene/signals';
 import { drawText, textWidth } from './engine/font';
-import { Hud } from './ui/hud';
+import { Hud, drawLimitPanel } from './ui/hud';
 import { RouteMap } from './ui/routemap';
 import { RouteIndex, ANCHOR_SCREEN_X, KM_PX, stopWorldX, type Poi } from './scene/routeindex';
 import { TravelAnim, type TravelFrame } from './scene/travel';
@@ -31,6 +31,10 @@ import { REGISTRY, LANDMARK_ORDER } from './scene/segments/registry';
 import { DayCycle } from './scene/daycycle';
 import { Celestial } from './scene/celestial';
 import { Weather } from './scene/weather';
+import { SpeedLimits, limitAt, capAt, nextChange, type Zone } from './train/limits';
+import { drawLimitSigns } from './scene/limitsigns';
+import { SEM_BEFORE_STATION_PX } from './train/signals';
+import { WAGON_W } from './sprites/eamos';
 import { RainFx, SnowFx, drawOvercast, drawSnowCover, drawSnowGround, drawTrackWeather, gloom } from './scene/weatherfx';
 import { LOCO_H, LOCO_W, PANTO_CONTACT } from './sprites/dragon2';
 import type { SegmentEnv } from './scene/segments/types';
@@ -131,6 +135,21 @@ let travelFx: TravelFrame | null = null;
 let travelTarget = 0;
 // semafory przed stacjami
 const signals = new SignalSystem();
+// ograniczenia prędkości (Ie-1): odcinki szlakowe z seeda + ograniczenia przy stacjach
+const limits = new SpeedLimits(ROUTE_SEED, (x0, x1) =>
+  routeIndex.between(x0 - 4000, x1 + 4000).filter((p) => p.signals)
+    .map((p) => ({ index: p.index, semX: p.startX - SEM_BEFORE_STATION_PX, endX: p.startX + p.width }))
+    .filter((s) => s.endX >= x0 && s.semX <= x1),
+);
+let zones: Zone[] = [];
+// osobny generator dla mapy (zakres ±10 km, niezależny od okna jazdy)
+const mapLimits = new SpeedLimits(ROUTE_SEED, (x0, x1) =>
+  routeIndex.between(x0 - 4000, x1 + 4000).filter((p) => p.signals)
+    .map((p) => ({ index: p.index, semX: p.startX - SEM_BEFORE_STATION_PX, endX: p.startX + p.width }))
+    .filter((s) => s.endX >= x0 && s.semX <= x1),
+);
+/** Długość składu (px): od czoła lokomotywy do końca ostatniego wagonu. */
+const trainLen = () => LOCO_W + state.wagons * (WAGON_W + 1);
 /** Hamowanie nagłe po przejechaniu sygnału STÓJ (RADIOSTOP) – trwa do zatrzymania. */
 let emergency = false;
 /** Czas wyświetlania komunikatu o przejechaniu sygnału (s). */
@@ -303,7 +322,9 @@ function simulate(dt: number): void {
     if (state.kmh === 0) emergency = false;
   } else {
     // jazda automatyczna sama respektuje semafory (zwalnia, staje przed czerwonym, rusza)
-    const cap = state.autoDrive ? signals.cap(prevFront) : Infinity;
+    // AUTO: szlakowa 120 km/h, zwalnia przed W 9 i przyspiesza, gdy ogon minie koniec odcinka
+    if (state.autoDrive) state.targetKmh = MAX_KMH;
+    const cap = state.autoDrive ? Math.min(signals.cap(prevFront), capAt(zones, prevFront, trainLen())) : Infinity;
     state.kmh = stepSpeed(state.kmh, state.running ? Math.min(state.targetKmh, cap) : 0, dt);
     braking = state.kmh < prev - 1e-9;
     worldX += state.kmh * PX_PER_KMH * dt;
@@ -321,6 +342,7 @@ function simulate(dt: number): void {
   else if (signals.checkSpad(prevFront, front)) radiostop();
   alertT = Math.max(0, alertT - dt);
   routeMap.update(dt);
+  zones = limits.near(front - trainLen() - 700, front + 3 * KM_PX);
   consist.update(dt, state.kmh);
   // „pływająca" kamera: pociąg lekko wysuwa się przy przyspieszaniu, cofa przy hamowaniu
   const accel = dt > 0 ? (state.kmh - prev) / dt : 0;
@@ -418,6 +440,7 @@ startLoop(
     world.drawBack(bctx, env);
     drawPoles(bctx, camX);
     drawSignalPosts(bctx, camX, signals.posts);
+    drawLimitSigns(bctx, camX, zones);
     world.drawBed(bctx, env);
     drawSnowCover(bctx, weather.snow); // biel na dachach, koronach i nasypie (pod torem)
     drawSnowGround(bctx, weather.snow);
@@ -482,10 +505,11 @@ startLoop(
       auto: state.autoDrive, signal: signalPreview(),
     });
     drawAlert();
+    drawLimits();
     routeMap.draw(ctx, trainRef(), hud.alpha, (id, kind) => {
       const p = signals.posts.find((q) => q.id === id);
       return p ? signalColor(kind, p, time) : PAL.sigMast;
-    });
+    }, (x0, x1) => mapLimits.near(x0, x1));
     screen.present();
   },
 );
@@ -525,6 +549,7 @@ if (import.meta.env.DEV) {
         state,
         travel,
         signals,
+        limits,
         get worldX() {
           return worldX;
         },
@@ -542,5 +567,21 @@ if (import.meta.env.DEV) {
         },
       };
     },
+  );
+}
+
+/** Panel ograniczenia prędkości (prawy górny róg); miga przy przekroczeniu w jeździe ręcznej. */
+function drawLimits(): void {
+  const front = trainFront();
+  const tail = trainLen();
+  const limit = limitAt(zones, front, tail);
+  const n = nextChange(zones, front, tail);
+  const over = !state.autoDrive && state.kmh > limit + 1.5;
+  // ostrzeżenie widać także, gdy reszta HUD jest schowana
+  drawLimitPanel(
+    ctx,
+    { limit, next: n ? { kmh: n.kmh, km: n.dist / KM_PX } : null, kmh: state.kmh, over },
+    time,
+    Math.max(hud.alpha, over ? 1 : 0),
   );
 }

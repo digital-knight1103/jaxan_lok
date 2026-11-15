@@ -336,6 +336,9 @@ export const PAL = {
   railWet: '#C8DAEC',
   snowFlake: '#F4F8FC',
   snowCover: '#EAF1F7',
+  // --- wskaźniki Ie-1 (W 8, W 9) ---
+  ieBlack: '#16161A',
+  ieWhite: '#F0F0F2',
 } as const;
 
 export type PalKey = keyof typeof PAL;
