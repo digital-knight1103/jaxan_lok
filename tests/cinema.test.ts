@@ -21,7 +21,7 @@ describe('CinemaCam', () => {
       expect(v.w / v.h).toBeCloseTo(W / H, 6);
       maxZoom = Math.max(maxZoom, W / v.w);
     }
-    expect(maxZoom).toBeGreaterThan(1.4);
+    expect(maxZoom).toBeGreaterThan(ZOOM_MAX - 0.05);
     expect(maxZoom).toBeLessThanOrEqual(ZOOM_MAX + 1e-6);
   });
   it('kamera naprawdę przesuwa się wzdłuż składu', () => {
