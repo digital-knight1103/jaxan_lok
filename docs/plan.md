@@ -419,4 +419,26 @@ rezygnacja. Każdy punkt osobnym commitem.
 - [x] **Drugi tor** sprawdzony na Sokółce i na moście na Wiśle: tor i jego sieć widoczne na całej długości, rysowane po warstwie tła, więc budynki go nie zasłaniają.
   Zrzuty `screenshots/b5-sokolka-drugi-tor.png`, `b6-most-drugi-tor.png`.
 - [x] **Podgląd `?station-train`**: na każdej stacji stoi skład na drugim torze (zrzut b5).
-- [ ] Uwagi z odsłuchu (głośność przelotu/dzwonka) – w poleceniu pozostał szablon bez treści, nic nie zmieniono.
+- [ ] Uwagi z odsłuchu (głośność przelotu/dzwonka) – w poleceniu był pusty szablon; do uzupełnienia (patrz „Pomysły”).
+
+---
+
+## STAN NA 15.11
+
+Etap 3 zamknięty (tagi v3.0 i v3.1, v3.2 – stan końcowy dnia). Gotowe: pory roku (A), druga linia
+z pociągami z naprzeciwka (B), przejazdy kolejowo-drogowe z W 6a/W 6b (C), poprawki v3.1.
+`npm run build` i 151 testów przechodzą, repozytorium czyste.
+
+### Otwarte
+
+- [ ] Uwagi z odsłuchu: głośność przelotu (`AUDIO.passby` 0.09) i dzwonka (`AUDIO.bell` 0.02) – czekają na konkretne wartości.
+- [ ] W 6b nie ma osobnego zrzutu w grze (W 6a widać na `c3`).
+
+### Pomysły na przyszłość
+
+- Własny pomost/konstrukcja drugiego toru na moście na Wiśle (dziś leży na wiązaniu łukowym).
+- Pociągi z naprzeciwka: więcej typów (pasażerski z lokomotywą, skład pustych węglarek), zatrzymanie na stacji i odjazd.
+- Przejazdy: kategorie B/C (z samymi krzyżami, bez rogatek), pieszy przejazd, dźwięk nadjeżdżającego pociągu przy przejeździe z Dopplerem.
+- Pory roku: kolejne efekty (burze wiosną, mgła nad polami jesienią, szron na szynach), święta zimą.
+- Sygnalizacja: semafory dla drugiego toru, mijanie na stacjach z rozjazdami.
+- Tryb fotograficzny: eksport zrzutu 1920×1080 jednym klawiszem.
