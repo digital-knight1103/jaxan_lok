@@ -250,12 +250,12 @@ class DayCycle { t: number /*0=północ,0.5=południe*/; auto: boolean;
 
 Każdy punkt osobno: implementacja → build → zrzut → commit.
 
-- [ ] **Pogoda `W`**: słońce → deszcz → śnieg na `Pool`; mokre odbicia na szynach przy deszczu.
+- [x] **Pogoda `W`** – zrobione 15.11 (patrz „Zmiana planu 15.11”).
 - [x] ~~**Załadunek w kopalni**~~ (rezygnacja – scena tła): zatrzymanie z wagonem pod `hopperX` (±12 px) → sypanie kruszywa, `load` 0→1 w 3 s, kolejny wagon wymaga podjechania. Wagony w trasie wracają do „pustych" po stacji (logika w `consist.ts`, test na stan wagonów).
 - [x] **Semafory** – zrobione w poprawkach 2026-11-14 (część 2), patrz niżej.
 - [x] ~~**Liczba wagonów**~~ (rezygnacja – scena tła).
 - [x] ~~**Licznik km i ton**~~ (rezygnacja – scena tła).
-- [ ] **Tryb kinowy `C`**: HUD ukryty, powolny zoom całkowity (×1 ↔ ×2 wycinka bufora).
+- [x] **Tryb kinowy `C`** – zrobione 15.11 (płynny zoom ułamkowy ×1–1,5 zamiast całkowitego ×1/×2).
 
 ---
 
@@ -361,5 +361,28 @@ chłodne cienie, perspektywa powietrzna, dithering na przejściach, 5 tonów na 
 4. ~~**Etap 2 – Załadunek w kopalni**~~ (rezygnacja – scena tła) (`hopperX`, `load` 0→1 w 3 s, test stanu wagonów).
 5. ~~**Etap 2 – Liczba wagonów**~~ (rezygnacja – scena tła) (1–12, test clamp).
 6. ~~**Etap 2 – Licznik km i ton**~~ (rezygnacja – scena tła) w `localStorage` (try/catch, zapis co 10 s).
-7. **Etap 2 – Tryb kinowy `C`** (HUD ukryty, zoom całkowity ×1 ↔ ×2).
-8. **Etap 2 – Pogoda `W`** (deszcz, śnieg, mokre odbicia na szynach).
+7. [x] Tryb kinowy `C` – zrobione 15.11.
+8. [x] Pogoda `W` – zrobione 15.11.
+
+---
+
+## Zmiana planu 15.11 – scena jako tło (zrobione)
+
+Scena działa głównie jako tło; logiki gry nie rozbudowujemy. Wagony, licznik km/ton i załadunek –
+rezygnacja. Każdy punkt osobnym commitem.
+
+- [x] **Pogoda** (`scene/weather.ts` – logika + testy, `scene/weatherfx.ts` – rysowanie): zmiana sama co 3–10 min
+  (pogodnie → pochmurno → deszcz → pogodnie, śnieg 15% po pochmurnym), przejścia 20 s, `W` ręcznie.
+  Deszcz: skośne krople w 2 głębiach z rozpryskami, mokry połysk szyn, ciemniejsze niebo, cichy szum
+  (`audio.setRain`). Śnieg: płatki z paralaksą, biel na górnych krawędziach (dachy, korony, nasyp) i na ziemi,
+  bez oprószania taboru. Zrzuty: `screenshots/w1-deszcz.png`, `w2-snieg.png`.
+- [x] **Ograniczenia prędkości wg Ie-1** (`train/limits.ts` + `tests/limits.test.ts`, `scene/limitsigns.ts`):
+  W 8 (biały trójkąt wierzchołkiem w dół, czarna liczba w dziesiątkach km/h, w odległości drogi hamowania),
+  W 9 początek (kąt wierzchołkiem w dół) i koniec (odwrotna strona – kąt w górę); wzór z Ie-1 § 16 pkt 7–8.
+  Szlak 120 km/h; odcinki 100/80/60 po 1–3 km; przy stacjach 60/80 od semafora do końca stacji; z seeda.
+  AUTO: krzywa hamowania przed W 9, przyspieszanie, gdy ogon minie koniec odcinka. RĘCZNA: miganie panelu.
+  HUD „obowiązuje / następne / prędkość”, paski na mapie. Zrzuty: `screenshots/l1-w8.png`, `l2-w9.png`.
+- [x] **Tryb kinowy** (`scene/cinema.ts` + testy): `C` lub 3 min bezczynności, chowa HUD i mapę, zoom ×1–1,5
+  (skala ułamkowa tylko w tym trybie), pan wzdłuż składu; dowolny klawisz/ruch myszy = powrót.
+  Zrzut: `screenshots/c1-kinowy.png`.
+- Uwaga: Ie-1 nie definiuje osobnego wskaźnika końca ograniczenia – koniec to odwrotna strona W 9.

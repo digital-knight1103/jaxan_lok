@@ -36,6 +36,8 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
 | Jazda AUTO / RĘCZNA | `A` | klik w pole AUTO/RĘCZNA pod panelem |
 | Skok do poprzedniego / następnego punktu trasy | `[` / `]` | klik w ikonę na mapie trasy |
 | Przewijanie podglądu mapy | – | przeciągnij pasek mapy myszą lub palcem |
+| Pogoda: pogodnie → pochmurno → deszcz → śnieg | `W` | – |
+| Tryb kinowy (bez HUD i mapy, kamera) | `C` | dowolny klawisz / ruch myszy = powrót |
 
 - **Mapa trasy** (pasek na dole) pokazuje pociąg i punkty w promieniu ±10 km: stację Kamieniec
   Ząbkowicki 🏠, kopalnię ⛏, Sokółkę (żwirownia), Warszawę (PKiN) – pełne ikony – oraz mosty i zakłady (małe znaczniki – pełna ikona po najechaniu).
@@ -52,10 +54,27 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
     sygnału i odległość. Przejechanie czerwonego = alarm **RADIOSTOP**, hamowanie nagłe i komunikat
     „Przejechanie sygnału STÓJ!”.
   - Szybki przejazd z mapy omija semafory bez kar. Na mapie semafory to drobne znaczniki w kolorze sygnału.
+- **Ograniczenia prędkości (wg Ie-1)**: prędkość szlakowa 120 km/h; co kilka km odcinki 100 / 80 /
+  rzadziej 60 km/h długości 1–3 km, a przy każdej stacji 60 lub 80 km/h od semafora wjazdowego do końca stacji
+  (deterministycznie z seeda). Wskaźniki: **W 8** (biały trójkąt wierzchołkiem w dół, czarna liczba =
+  prędkość w dziesiątkach km/h, np. 8 = 80) stoi o drogę hamowania przed odcinkiem; **W 9** (biały
+  prostokąt z czarnym kątem wierzchołkiem w dół) oznacza początek, jego odwrotna strona (kąt
+  wierzchołkiem w górę) – koniec. Ograniczenie obowiązuje, dopóki koniec minie ostatni wagon.
+  HUD (prawy górny róg): duże „obowiązuje”, pod nim „następne: 100 za 1,2 km”, obok aktualna prędkość.
+  - **AUTO** jedzie 120 km/h, płynnie zwalnia przed W 9 i przyspiesza za końcem ograniczenia.
+  - **RĘCZNA**: bez kar – przy przekroczeniu panel miga na pomarańczowo (widać go nawet przy ukrytym HUD).
+  - Na mapie trasy ograniczenia to cienkie paski pod torem (jasny = 100, pomarańczowy = 80, czerwony = 60).
+- **Pogoda** zmienia się sama co 3–10 min (pogodnie → pochmurno → deszcz → pogodnie, rzadko pochmurno →
+  śnieg), przejścia ~20 s; `W` przełącza ręcznie. Deszcz: skośne krople, mokre szyny, ciemniejsze niebo,
+  cichy szum (po włączeniu dźwięku). Śnieg: płatki z paralaksą, biel na dachach, koronach i ziemi.
+  Pogoda nie wpływa na fizykę jazdy. Tabor nie jest oprószany śniegiem (malowanie JAXAN bez zmian).
+- **Tryb kinowy**: `C` albo 3 min bezczynności – chowa HUD i mapę, kamera powoli przybliża się (do ×1,5),
+  oddala i przesuwa wzdłuż składu. Tylko w tym trybie wycinek bufora jest skalowany ułamkowo (bez
+  wygładzania); zwykły widok zawsze ma skalę całkowitą.
 - **Dźwięk jest domyślnie wyłączony** (biuro) – włącz go `M`. Trąbienie płoszy ptaki także bez dźwięku.
   Wszystkie poziomy głośności (silniki, stukot, klakson, pisk) są w `src/config.ts` → `AUDIO`.
 - HUD chowa się po 4 s bezczynności, kursor po 3 s. Pierwszy dotyk tylko pokazuje HUD.
-- Po **3 minutach bez dotykania** scena wraca do trybu „samograja”: jazda 80 km/h i automatyczny
+- Po **3 minutach bez dotykania** scena wraca do trybu „samograja”: jazda AUTO (120 km/h), tryb kinowy i automatyczny
   cykl dobowy (pełna doba = 8 minut).
 
 ## Styl grafiki (styl2)
@@ -153,9 +172,10 @@ src/scene/           niebo, pasma wzgórz (ridges.ts), chmury, tor, sieć trakcy
 src/scene/segments/  odcinki trasy: pola, las, nasyp, wieś, most, zakład; Sokółka, Wisła, Warszawa,
                      kamieniołom i stacja Kamieniec; stationkit.ts – wspólne elementy stacji,
                      shade.ts – cieniowanie 5 tonów
-src/scene/signals.ts rysowanie semaforów i tarcz (światła z poświatą)
+src/scene/signals.ts rysowanie semaforów i tarcz; limitsigns.ts – wskaźniki W 8/W 9
+src/scene/weather.ts logika pogody, weatherfx.ts – deszcz, śnieg, mokre szyny; cinema.ts – kamera trybu kinowego
 src/sprites/         lokomotywa Dragon 2, węglarka Eamos, koła, drzewa (nature.ts), wieś (village.ts)
-src/train/           fizyka jazdy (z hamowaniem nagłym), skład, signals.ts – logika semaforów
+src/train/           fizyka jazdy (z hamowaniem nagłym), skład, signals.ts – semafory, limits.ts – ograniczenia Ie-1
 src/ui/hud.ts        panel sterowania
 src/ui/routemap.ts   mapa trasy (pasek na dole)
 src/scene/routeindex.ts  punkty trasy dla mapy (deterministyczny generator, ten sam seed)
@@ -166,5 +186,6 @@ src/scene/travel.ts  animacja szybkiego przejazdu do punktu
 
 - `?x=22820` – start w danym miejscu trasy (px), `?stop` – pociąg stoi,
 - `?t=0.0` – pora doby (0 = północ, 0.5 = południe), wyłącza automat,
+- `?w=rain` (`cloudy`, `snow`) – pogoda na starcie, `?cinema` – tryb kinowy od startu,
 - `?soak=8` – test wytrzymałości: symulacja 8 godzin bez rysowania; wynik w konsoli
   (liczba segmentów/canvasów/iskier musi być stała).
