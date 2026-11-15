@@ -401,3 +401,7 @@ rezygnacja. Każdy punkt osobnym commitem.
   Scena rysowana jak latem, warstwy i tła przebarwiane transformacją HSL (zieleń → złoto/rudź, świeża zieleń, śnieg); tabor nietknięty.
   Drzewa: jesienne rampy, nagie zimą, kwitnące wiosną; ośnieżone świerki; pola wg pory; bociany tylko wiosną/latem; liście i płatki; zamarznięte kałuże;
   krótszy dzień i bledsze niebo zimą; pogoda AUTO zależna od pory. Zrzuty `screenshots/p1..p4`.
+- [x] **B – pociągi z naprzeciwka** (`scene/oncoming.ts` + testy, `sprites/oncoming.ts`): linia dwutorowa (drugi tor 10 px wyżej, własna sieć),
+  co 1–3 min EZT (neutralne malowanie) albo towarowy (lokomotywa + cysterny / platformy z kontenerami), nieco ciemniejsze i mniej nasycone,
+  dźwięk przelotu (`audio.passby`: szum z Dopplerem + stukot) i czasem powitalny klakson, nocą okna i reflektory, na stacjach czasem stoi skład
+  na drugim torze. Podgląd: `?oncoming=emu|freight` (z `?stop` skład stoi). Zrzuty `screenshots/b1..b4`.

@@ -38,22 +38,25 @@ export function drawPoles(ctx: CanvasRenderingContext2D, worldX: number): void {
     ctx.fillRect(x - 3, CONTACT_WIRE_Y - 2, 8, 1);
     for (let i = 0; i < 6; i++) ctx.fillRect(x + 2 + i, MESSENGER_Y + i, 1, 1);
     ctx.fillRect(x - 1, TRACK_Y + 1, 4, 3); // fundament
+    // wysięgnik drugiego toru (przewody 10 px wyżej)
+    ctx.fillRect(x - 4, MESSENGER_Y - 11, 10, 1);
+    ctx.fillRect(x - 3, CONTACT_WIRE_Y - 12, 8, 1);
   }
 }
 
 /** Przewody – nad pociągiem (rysowane po nim). sway: kołysanie liny nośnej w px. */
-export function drawWires(ctx: CanvasRenderingContext2D, worldX: number, sway = 0): void {
+export function drawWires(ctx: CanvasRenderingContext2D, worldX: number, sway = 0, dy = 0): void {
   ctx.fillStyle = PAL.wire;
-  ctx.fillRect(0, CONTACT_WIRE_Y, W, 1);
+  ctx.fillRect(0, CONTACT_WIRE_Y - dy, W, 1);
   for (const x0 of poleXs(worldX)) {
     const start = x0 - POLE_STEP;
     for (let i = 0; i < POLE_STEP; i++) {
       const sx = start + i;
       if (sx < 0 || sx >= W) continue;
       const u = i / POLE_STEP;
-      const y = MESSENGER_Y + Math.round((SAG + sway) * 4 * u * (1 - u));
+      const y = MESSENGER_Y - dy + Math.round((SAG + sway) * 4 * u * (1 - u));
       ctx.fillRect(sx, y, 1, 1);
-      if (i % 20 === 10) ctx.fillRect(sx, y, 1, CONTACT_WIRE_Y - y); // wieszak
+      if (i % 20 === 10) ctx.fillRect(sx, y, 1, CONTACT_WIRE_Y - dy - y); // wieszak
     }
   }
 }

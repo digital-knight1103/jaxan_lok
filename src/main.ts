@@ -32,6 +32,7 @@ import { DayCycle } from './scene/daycycle';
 import { Celestial } from './scene/celestial';
 import { Weather, type WeatherKind } from './scene/weather';
 import { SeasonClock, SEASONS, syncLook, look, type Season } from './scene/season';
+import { OncomingTrains, drawSecondTrack, drawOncomingLights, parkedVisible, type OncomingKind } from './scene/oncoming';
 import { autumnLeaves, springPetals } from './scene/seasonfx';
 import { CinemaCam } from './scene/cinema';
 import { SpeedLimits, limitAt, capAt, nextChange, type Zone } from './train/limits';
@@ -60,6 +61,7 @@ if (params.has('t')) dayCycle.auto = false;
 const celestial = new Celestial();
 // Pory roku: zmieniają się same co kilka pętli trasy; ?season=spring|summer|autumn|winter ustawia porę na starcie, P przełącza.
 const seasons = new SeasonClock();
+
 if (SEASONS.includes(params.get('season') as Season)) seasons.jump(params.get('season') as Season);
 syncLook(seasons);
 dayCycle.dayBias = seasons.dayBias;
@@ -76,6 +78,14 @@ let cinemaWas = false;
 const cinemaCam = new CinemaCam();
 const rainFx = new RainFx();
 const snowFx = new SnowFx();
+const oncoming = new OncomingTrains();
+// ?oncoming=emu|freight: skład z naprzeciwka od razu w kadrze (z ?stop – stoi; podgląd/zrzuty)
+if (params.get('oncoming') === 'emu' || params.get('oncoming') === 'freight') {
+  const t = oncoming.spawn(params.get('oncoming') as OncomingKind, worldX);
+  t.x = worldX + 60;
+  t.salute = false;
+  if (params.has('stop')) t.v = 0;
+}
 const leafFx = autumnLeaves();
 const petalFx = springPetals();
 
@@ -449,6 +459,12 @@ function simulate(dt: number): void {
   clouds.update(dt);
   // rano (wschód–przedpołudnie) automat może wywołać mgłę
   // pory roku: przejścia kolorów, dłuższy/krótszy dzień, szanse pogody AUTO
+  {
+    // pociągi z naprzeciwka (drugi tor): ruch, harmonogram, dźwięk przelotu i powitalny klakson
+    const ev = oncoming.update(dt, Math.floor(worldX), state.kmh, parkedVisible(world.stations()));
+    if (ev.pass) audio.passby(ev.pass.peakS, ev.pass.totalS, ev.pass.heavy);
+    if (ev.horn) { audio.hornStart('hi'); setTimeout(() => audio.hornStop('hi'), 450); }
+  }
   seasons.update(dt, worldX);
   if (syncLook(seasons)) for (const l of skinned) l.skin(look.from, look.to, look.step);
   dayCycle.dayBias = seasons.dayBias;
@@ -564,6 +580,7 @@ startLoop(
     drawSignalPosts(bctx, camX, signals.posts);
     drawLimitSigns(bctx, camX, zones);
     world.drawBed(bctx, env);
+    drawSecondTrack(bctx, camX, oncoming, world.stations(), sway); // drugi tor, sieć i pociągi z naprzeciwka
     drawFogVeil(bctx, fogW, 0.45, TRACK_Y - 70, TRACK_Y + 10); // mgła przy ziemi: tło toru zlewa się z mgłą
     drawFogVeil(bctx, fogW, 0.3, TRACK_Y + 8, TRACK_Y + 9); // lekki welon także na polach przed torem
     drawFogWisps(bctx, fogW, worldX, time, 0, TRACK_Y - 40, TRACK_Y + 4, 0.35);
@@ -574,6 +591,7 @@ startLoop(
     applyTint(bctx, night, dayCycle.warmth, 0.72, dayCycle.golden, gloom(weather.cloud, weather.rain));
     ctx.drawImage(backCanvas, 0, 0);
     world.drawLights(ctx, env);
+    drawOncomingLights(ctx, camX, oncoming, world.stations(), night);
     drawSignalLights(ctx, camX, signals.posts, night, time);
 
     // 3. pociąg, przewody i pierwszy plan (też przyciemniane)

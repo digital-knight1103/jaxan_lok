@@ -287,6 +287,56 @@ export class AudioEngine {
     g.linearRampToValueAtTime(0, from + 0.25); // wygaszanie
   }
 
+  /**
+   * Przelot pociągu z naprzeciwka: szum powietrza i stukot kół. Narasta do szczytu (minięcie
+   * środka składu), potem opada; filtr schodzi z góry w dół (efekt Dopplera: zbliżanie i oddalanie).
+   * heavy – skład towarowy: niższy, głośniejszy, wolniejszy stukot.
+   */
+  passby(peakS: number, totalS: number, heavy: boolean): void {
+    if (!this.ctx || !this.master || !this.noise || this.muted) return;
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime;
+    const peak = t0 + peakS;
+    const end = t0 + totalS + 0.6;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise;
+    src.loop = true;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 0.7;
+    const f0 = heavy ? 520 : 760;
+    bp.frequency.setValueAtTime(f0 * 1.5, t0);
+    bp.frequency.exponentialRampToValueAtTime(f0, peak);
+    bp.frequency.exponentialRampToValueAtTime(f0 * 0.55, end);
+    const g = ctx.createGain();
+    const level = AUDIO.passby * (heavy ? 1.2 : 1);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(level, peak);
+    g.gain.exponentialRampToValueAtTime(0.0001, end);
+    src.connect(bp).connect(g).connect(this.master);
+    src.start(t0);
+    src.stop(end + 0.1);
+    // stukot kół na złączach: krótkie impulsy, częstsze i głośniejsze blisko szczytu
+    const clack = ctx.createBufferSource();
+    clack.buffer = this.noise;
+    clack.loop = true;
+    const cf = ctx.createBiquadFilter();
+    cf.type = 'bandpass';
+    cf.frequency.value = heavy ? 260 : 340;
+    cf.Q.value = 1.2;
+    const cg = ctx.createGain();
+    cg.gain.value = 0;
+    const step = heavy ? 0.11 : 0.085;
+    for (let t = t0 + 0.2; t < end - 0.2; t += step) {
+      const near = 1 - Math.min(1, Math.abs(t - peak) / Math.max(0.5, totalS * 0.5));
+      cg.gain.setValueAtTime(AUDIO.passby * 1.4 * near * near, t);
+      cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    }
+    clack.connect(cf).connect(cg).connect(this.master);
+    clack.start(t0);
+    clack.stop(end + 0.1);
+  }
+
   /** RADIOSTOP: przenikliwy, przerywany alarm dwutonowy (~2,5 s) po przejechaniu sygnału STÓJ. */
   radiostop(): void {
     if (!this.ctx || !this.master || this.muted) return;

@@ -114,6 +114,11 @@ export class World {
     while (this.warm && !spent()) if (this.warm.next().done) this.warm = undefined;
   }
 
+  /** Stacje na ekranie (miejsca, gdzie może stać skład na drugim torze). */
+  stations(): { x: number; width: number; seed: number }[] {
+    return this.items.filter((it) => it.p.def.signals).map((it) => ({ x: it.x, width: it.p.def.width, seed: it.p.seed }));
+  }
+
   get cachedCanvases(): number {
     return this.cache.size;
   }

@@ -70,4 +70,6 @@ export const AUDIO = {
   radiostop: 0.07,
   /** Szum deszczu przy pełnym opadzie (cichy, w tle). */
   rain: 0.05,
+  /** Przelot pociągu z naprzeciwka (szczyt szumu). */
+  passby: 0.09,
 } as const;
