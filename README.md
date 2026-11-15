@@ -13,7 +13,7 @@ Vite + TypeScript + Canvas 2D, zero zależności w czasie działania. Grafika i 
 ## Online
 
 Wersja do obejrzenia w przeglądarce: **https://digital-knight1103.github.io/jaxan_lok/**
-(publikowana automatycznie z `main` przez GitHub Actions).
+(publikowana automatycznie z `main` przez GitHub Actions). Ostatnia aktualizacja: 15.11.2026.
 
 > JAXAN, Dragon 2 (Newag) i Eamos to znaki i nazwy ich właścicieli. Projekt jest fanowski
 > i niekomercyjny, nie jest powiązany z żadnym z nich ani przez nich popierany.
