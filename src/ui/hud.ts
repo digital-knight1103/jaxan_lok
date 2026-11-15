@@ -311,7 +311,6 @@ export const HELP_LINES: [string, string][] = [
   ['F', 'PEŁNY EKRAN'],
   ['W', 'POGODA: AUTO, POGODNIE, POCHMURNO, DESZCZ, MGŁA, ŚNIEG'],
   ['C', 'TRYB KINOWY'],
-  ['+ -', 'DODAJ / ODEJMIJ WAGON'],
   ['[ ]', 'POPRZEDNI / NASTĘPNY PUNKT TRASY'],
   ['?', 'TA POMOC'],
 ];
