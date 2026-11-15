@@ -8,7 +8,7 @@ export const ZOOM_PERIOD_S = 80;
 /** Okres przesuwania się wzdłuż składu (s). */
 export const PAN_PERIOD_S = 150;
 /** Największe przybliżenie. */
-export const ZOOM_MAX = 1.5;
+export const ZOOM_MAX = 1.3;
 /** Czasy płynnego wejścia / wyjścia (s). */
 const IN_S = 3;
 const OUT_S = 1;

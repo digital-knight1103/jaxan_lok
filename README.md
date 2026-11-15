@@ -68,7 +68,7 @@ W innych rozdzielczościach używana jest największa całkowita skala, a reszt�
   śnieg), przejścia ~20 s; `W` przełącza ręcznie. Deszcz: skośne krople, mokre szyny, ciemniejsze niebo,
   cichy szum (po włączeniu dźwięku). Śnieg: płatki z paralaksą, biel na dachach, koronach i ziemi.
   Pogoda nie wpływa na fizykę jazdy. Tabor nie jest oprószany śniegiem (malowanie JAXAN bez zmian).
-- **Tryb kinowy**: `C` albo 3 min bezczynności – chowa HUD i mapę, kamera powoli przybliża się (do ×1,5),
+- **Tryb kinowy**: `C` albo 3 min bezczynności – chowa HUD i mapę, kamera powoli przybliża się (do ×1,3),
   oddala i przesuwa wzdłuż składu. Tylko w tym trybie wycinek bufora jest skalowany ułamkowo (bez
   wygładzania); zwykły widok zawsze ma skalę całkowitą.
 - **Dźwięk jest domyślnie wyłączony** (biuro) – włącz go `M`. Trąbienie płoszy ptaki także bez dźwięku.

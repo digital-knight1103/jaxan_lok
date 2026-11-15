@@ -255,7 +255,7 @@ Każdy punkt osobno: implementacja → build → zrzut → commit.
 - [x] **Semafory** – zrobione w poprawkach 2026-11-14 (część 2), patrz niżej.
 - [x] ~~**Liczba wagonów**~~ (rezygnacja – scena tła).
 - [x] ~~**Licznik km i ton**~~ (rezygnacja – scena tła).
-- [x] **Tryb kinowy `C`** – zrobione 15.11 (płynny zoom ułamkowy ×1–1,5 zamiast całkowitego ×1/×2).
+- [x] **Tryb kinowy `C`** – zrobione 15.11 (płynny zoom ułamkowy ×1–1,3 zamiast całkowitego ×1/×2).
 
 ---
 
@@ -382,7 +382,7 @@ rezygnacja. Każdy punkt osobnym commitem.
   Szlak 120 km/h; odcinki 100/80/60 po 1–3 km; przy stacjach 60/80 od semafora do końca stacji; z seeda.
   AUTO: krzywa hamowania przed W 9, przyspieszanie, gdy ogon minie koniec odcinka. RĘCZNA: miganie panelu.
   HUD „obowiązuje / następne / prędkość”, paski na mapie. Zrzuty: `screenshots/l1-w8.png`, `l2-w9.png`.
-- [x] **Tryb kinowy** (`scene/cinema.ts` + testy): `C` lub 3 min bezczynności, chowa HUD i mapę, zoom ×1–1,5
+- [x] **Tryb kinowy** (`scene/cinema.ts` + testy): `C` lub 3 min bezczynności, chowa HUD i mapę, zoom ×1–1,3
   (skala ułamkowa tylko w tym trybie), pan wzdłuż składu; dowolny klawisz/ruch myszy = powrót.
   Zrzut: `screenshots/c1-kinowy.png`.
 - Uwaga: Ie-1 nie definiuje osobnego wskaźnika końca ograniczenia – koniec to odwrotna strona W 9.
