@@ -405,3 +405,8 @@ rezygnacja. Każdy punkt osobnym commitem.
   co 1–3 min EZT (neutralne malowanie) albo towarowy (lokomotywa + cysterny / platformy z kontenerami), nieco ciemniejsze i mniej nasycone,
   dźwięk przelotu (`audio.passby`: szum z Dopplerem + stukot) i czasem powitalny klakson, nocą okna i reflektory, na stacjach czasem stoi skład
   na drugim torze. Podgląd: `?oncoming=emu|freight` (z `?stop` skład stoi). Zrzuty `screenshots/b1..b4`.
+- [x] **C – przejazdy kolejowo-drogowe** (`train/crossings.ts` + testy, `scene/crossingfx.ts`, `scene/segments/crossing.ts`): droga przecina oba tory,
+  rogatki biało-czerwone (półzaporowe), krzyż św. Andrzeja z sygnalizatorem (dwa na przemian migające czerwone światła), cichy dzwonek,
+  wskaźnik W 6 (biały trójkąt wierzchołkiem w górę z sylwetką pojazdu; dokładny wzór z Ie-1 niezweryfikowany – brak dostępu do instrukcji) 380 px przed przejazdem;
+  w AUTO przy W 6 sygnał Rp 1 (jeden długi klakson). Rogatki zamykają się też przed pociągiem z naprzeciwka. Kolejka aut (osobowe, traktor,
+  wywrotka z kruszywem) czeka i rusza po otwarciu; nocą poświata świateł. Przejazdy to znaczniki na mapie trasy. Podgląd: `?crossing=N&stop`. Zrzuty `screenshots/c1..c3`.

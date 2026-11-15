@@ -72,4 +72,6 @@ export const AUDIO = {
   rain: 0.05,
   /** Przelot pociągu z naprzeciwka (szczyt szumu). */
   passby: 0.09,
+  /** Dzwonek sygnalizatora przejazdowego (cichy). */
+  bell: 0.02,
 } as const;

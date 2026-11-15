@@ -6,7 +6,7 @@ import { ROUTE_SEED, PX_PER_KMH } from '../src/config';
 /** Główne lokalizacje na mapie (bez drobnych mostów/zakładów). */
 function locations(until: number) {
   const idx = new RouteIndex(ROUTE_SEED, REGISTRY, LANDMARK_ORDER);
-  return idx.between(0, until).filter((p) => !['bridge', 'plant'].includes(p.icon));
+  return idx.between(0, until).filter((p) => !['bridge', 'plant', 'crossing'].includes(p.icon));
 }
 
 describe('Lokalizacje trasy – prawdziwy rejestr', () => {

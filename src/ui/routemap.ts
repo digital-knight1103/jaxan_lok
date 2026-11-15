@@ -27,11 +27,12 @@ const ICONS: Record<MapIcon, string[]> = {
   bridge: ['nnnnnnn', 'nn.n.nn', 'n..n..n', 'n..n..n', 'n..n..n'],
   plant: ['.s...s.', 's...s..', 'd...d..', 'd.d.d.d', 'ddddddd'],
   gravel: ['bbbbm..', '.w.m...', '.wm..a.', '.m..aaa', 'm..aaaa'],
+  crossing: ['.......', 'w.....w', '.w...w.', '..w.w..', 'rrrrrrr'],
   city: ['...p...', '...p...', '..ppp..', 't.ppp.t', 'ttppptt'],
 };
 const ICON_COLORS: Record<string, string> = {
   b: PAL.signBlue, w: PAL.white, y: PAL.machine, g: PAL.rock, n: PAL.bridgeHi, s: PAL.smokeHi, d: PAL.plantHi,
-  m: PAL.locoMagentaHi, a: PAL.sand, p: PAL.pkinHi, t: PAL.towerGlassHi,
+  m: PAL.locoMagentaHi, r: PAL.barrierRed, a: PAL.sand, p: PAL.pkinHi, t: PAL.towerGlassHi,
 };
 
 export class RouteMap {
@@ -226,5 +227,5 @@ export class RouteMap {
 }
 
 function rank(icon: MapIcon): number {
-  return icon === 'bridge' || icon === 'plant' ? 0 : 1;
+  return icon === 'bridge' || icon === 'plant' || icon === 'crossing' ? 0 : 1;
 }

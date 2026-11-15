@@ -22,8 +22,9 @@ import { sokolka } from './sokolka';
 import { wisla } from './wisla';
 import { warszawa } from './warszawa';
 import { village } from './village';
+import { crossing } from './crossing';
 
-export const REGISTRY: SegmentDef[] = [fields, forest, embankment, village, bridge, plant, quarry, station, sokolka, wisla, warszawa];
+export const REGISTRY: SegmentDef[] = [fields, forest, embankment, village, crossing, bridge, plant, quarry, station, sokolka, wisla, warszawa];
 
 /**
  * Pętla lokalizacji (cyklicznie), między nimi pola i lasy:

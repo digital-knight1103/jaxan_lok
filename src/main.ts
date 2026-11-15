@@ -33,6 +33,8 @@ import { Celestial } from './scene/celestial';
 import { Weather, type WeatherKind } from './scene/weather';
 import { SeasonClock, SEASONS, syncLook, look, type Season } from './scene/season';
 import { OncomingTrains, drawSecondTrack, drawOncomingLights, parkedVisible, type OncomingKind } from './scene/oncoming';
+import { Crossings, occupies, type Extent } from './train/crossings';
+import { drawCrossingsFar, drawCrossingsNear, drawCrossingSlabs, drawCrossingLights, W6_DIST, type CrossingRef } from './scene/crossingfx';
 import { autumnLeaves, springPetals } from './scene/seasonfx';
 import { CinemaCam } from './scene/cinema';
 import { SpeedLimits, limitAt, capAt, nextChange, type Zone } from './train/limits';
@@ -86,6 +88,11 @@ if (params.get('oncoming') === 'emu' || params.get('oncoming') === 'freight') {
   t.salute = false;
   if (params.has('stop')) t.v = 0;
 }
+// przejazdy kolejowo-drogowe: stan rogatek/świateł/aut (logika w train/crossings.ts)
+const crossings = new Crossings();
+let crefs: CrossingRef[] = [];
+const rp1Done = new Set<number>();
+let bellT = 0;
 const leafFx = autumnLeaves();
 const petalFx = springPetals();
 
@@ -157,6 +164,12 @@ const birds = new Birds(Math.floor(worldX));
 // mapa trasy: osobny, deterministyczny indeks punktów (ten sam seed co trasa)
 const routeIndex = new RouteIndex(ROUTE_SEED, REGISTRY, LANDMARK_ORDER);
 const routeMap = new RouteMap(routeIndex);
+// ?crossing=N: start N px przed pierwszym przejazdem kolejowo-drogowym (debug/zrzuty), np. ?crossing=700&stop
+if (params.has('crossing')) {
+  let p: Poi | null = routeIndex.next(0);
+  for (let i = 0; p && p.icon !== 'crossing' && i < 60; i++) p = routeIndex.next(p.anchorX);
+  if (p) worldX = Math.max(0, p.anchorX - TRAIN_X - LOCO_W - (Number(params.get('crossing')) || 700));
+}
 const travel = new TravelAnim();
 let travelFx: TravelFrame | null = null;
 let travelTarget = 0;
@@ -450,6 +463,35 @@ function simulate(dt: number): void {
   else if (signals.checkSpad(prevFront, front)) radiostop();
   alertT = Math.max(0, alertT - dt);
   routeMap.update(dt);
+  {
+    // przejazdy: światła i rogatki reagują na nasz skład i pociągi z naprzeciwka
+    crefs = routeIndex.between(worldX - 1500, worldX + W + 2400).filter((p) => p.icon === 'crossing').map((p) => ({ index: p.index, x: p.anchorX }));
+    const ours: Extent = { front, tail: front - trainLen(), dir: 1 };
+    const others: Extent[] = oncoming.trains.map((t) => ({ front: t.x, tail: t.x + t.len, dir: -1 }));
+    for (const c of crefs) {
+      const near = c.x > worldX - 900 && c.x < worldX + W + 900;
+      const occ = occupies(c.x, ours) || others.some((e) => occupies(c.x, e));
+      crossings.get(c.index).update(dt, occ, near);
+      // AUTO: przy wskaźniku W 6 maszynista sam daje sygnał Rp 1 „Baczność” (jeden długi dźwięk)
+      const w6 = c.x - W6_DIST;
+      if (state.autoDrive && !travel.active && Math.abs(front - prevFront) < 400 && prevFront < w6 && front >= w6 && !rp1Done.has(c.index)) {
+        rp1Done.add(c.index);
+        audio.hornStart('lo');
+        setTimeout(() => audio.hornStop('lo'), 1700);
+      }
+    }
+    crossings.keepOnly(new Set(crefs.map((c) => c.index)));
+    if (rp1Done.size > 40) rp1Done.clear();
+    // cichy dzwonek sygnalizatora: tylko gdy przejazd w pobliżu kadru ma włączone światła
+    bellT -= dt;
+    if (bellT <= 0) {
+      const ring = crefs.find((c) => crossings.get(c.index).lights && Math.abs(c.x - (worldX + TRAIN_X)) < 900);
+      if (ring) {
+        audio.bell(Math.max(0.15, 1 - Math.abs(ring.x - (worldX + TRAIN_X)) / 900));
+        bellT = 0.4;
+      } else bellT = 0.2;
+    }
+  }
   zones = limits.near(front - trainLen() - 700, front + 3 * KM_PX);
   consist.update(dt, state.kmh);
   // „pływająca" kamera: pociąg lekko wysuwa się przy przyspieszaniu, cofa przy hamowaniu
@@ -580,6 +622,7 @@ startLoop(
     drawSignalPosts(bctx, camX, signals.posts);
     drawLimitSigns(bctx, camX, zones);
     world.drawBed(bctx, env);
+    drawCrossingsFar(bctx, camX, crefs, (i) => crossings.get(i)); // W 6, dalsza rogatka i słup
     drawSecondTrack(bctx, camX, oncoming, world.stations(), sway); // drugi tor, sieć i pociągi z naprzeciwka
     drawFogVeil(bctx, fogW, 0.45, TRACK_Y - 70, TRACK_Y + 10); // mgła przy ziemi: tło toru zlewa się z mgłą
     drawFogVeil(bctx, fogW, 0.3, TRACK_Y + 8, TRACK_Y + 9); // lekki welon także na polach przed torem
@@ -587,11 +630,13 @@ startLoop(
     drawSnowCover(bctx, snowLvl); // biel na dachach, koronach i nasypie (pod torem)
     drawSnowGround(bctx, weather.snow);
     drawTrack(bctx, camX);
+    drawCrossingSlabs(bctx, camX, crefs); // nawierzchnia przejazdu na obu torach
     drawTrackWeather(bctx, camX, weather.rain, snowLvl);
     applyTint(bctx, night, dayCycle.warmth, 0.72, dayCycle.golden, gloom(weather.cloud, weather.rain));
     ctx.drawImage(backCanvas, 0, 0);
     world.drawLights(ctx, env);
     drawOncomingLights(ctx, camX, oncoming, world.stations(), night);
+    drawCrossingLights(ctx, camX, crefs, (i) => crossings.get(i), night);
     drawSignalLights(ctx, camX, signals.posts, night, time);
 
     // 3. pociąg, przewody i pierwszy plan (też przyciemniane)
@@ -610,6 +655,7 @@ startLoop(
       fore.draw(fctx, worldX);
     }
     fore.draw(fctx, worldX);
+    drawCrossingsNear(fctx, camX, crefs, (i) => crossings.get(i)); // bliższa rogatka, krzyż, kolejka aut
     applyTint(fctx, night, dayCycle.warmth * 0.6, 0.5, dayCycle.golden * 0.35, gloom(weather.cloud, weather.rain) * 0.35); // pociąg – bohater sceny – czytelny także nocą
     ctx.drawImage(frontCanvas, 0, 0);
 

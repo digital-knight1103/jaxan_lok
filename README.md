@@ -205,3 +205,9 @@ src/scene/travel.ts  animacja szybkiego przejazdu do punktu
 - `?w=rain` (`cloudy`, `snow`, `fog`, `clear`) – pogoda na starcie, `?cinema` – tryb kinowy od startu,
 - `?soak=8` – test wytrzymałości: symulacja 8 godzin bez rysowania; wynik w konsoli
   (liczba segmentów/canvasów/iskier musi być stała).
+
+## Etap 3 – pory roku, drugi tor, przejazdy
+
+- **Pory roku** (`P`, `?season=`): wiosna (kwitnące drzewa, rzepak, bociany), lato, jesień (złoto/rudź, spadające liście, zaorane pola, mgły), zima (śnieg, nagie drzewa, krótszy dzień). AUTO zmienia pory co ok. 2 pętle trasy; pogoda AUTO zależy od pory.
+- **Drugi tor**: co 1–3 min mija nas EZT albo skład towarowy (z dźwiękiem przelotu i czasem klaksonem), na stacjach czasem stoi skład. Podgląd: `?oncoming=emu|freight`.
+- **Przejazdy kolejowo-drogowe**: rogatki, sygnalizator, W 6, w AUTO sygnał Rp 1; kolejka aut. Podgląd: `?crossing=N&stop`.

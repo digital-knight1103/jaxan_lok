@@ -337,6 +337,22 @@ export class AudioEngine {
     clack.stop(end + 0.1);
   }
 
+  /** Dzwonek sygnalizatora przejazdowego: krótkie, ciche „ding” (vol 0..1 – odległość). */
+  bell(vol: number): void {
+    if (!this.ctx || !this.master || this.muted) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = 1750;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(AUDIO.bell * vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    o.connect(g).connect(this.master);
+    o.start(t);
+    o.stop(t + 0.2);
+  }
+
   /** RADIOSTOP: przenikliwy, przerywany alarm dwutonowy (~2,5 s) po przejechaniu sygnału STÓJ. */
   radiostop(): void {
     if (!this.ctx || !this.master || this.muted) return;
